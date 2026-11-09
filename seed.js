@@ -52,30 +52,32 @@ const paymentPool = new Pool({
 });
 
 const products = [
-  // --- Electronics ---
-  { id: 1, name: 'Sony WH-1000XM5 Headphones', category: 'Electronics', price: 399, stock: 25, detail: 'Wireless noise cancelling headphones', icon: 'headphones', tint: 'lilac', tag: 'BESTSELLER', rating: 4.9 },
-  { id: 2, name: 'Apple AirPods Pro 2', category: 'Electronics', price: 199, stock: 45, detail: 'Adaptive audio, active noise cancellation', icon: 'earbuds', tint: 'sand', tag: 'DEAL', rating: 4.8 },
-  { id: 3, name: 'Bose QuietComfort Ultra', category: 'Electronics', price: 429, stock: 18, detail: 'Immersive spatial audio headphones', icon: 'headphones2', tint: 'blue', rating: 4.8 },
-  { id: 4, name: 'Logitech MX Master 3S Mouse', category: 'Electronics', price: 99, stock: 50, detail: 'Ergonomic performance wireless mouse', icon: 'mouse', tint: 'mint', rating: 4.7 },
-  { id: 5, name: 'Keychron K2 Mechanical Keyboard', category: 'Electronics', price: 110, stock: 30, detail: 'Wireless compact tactile keyboard', icon: 'keyboard', tint: 'peach', rating: 4.7 },
-  { id: 6, name: 'Dell UltraSharp 27" 4K Monitor', category: 'Electronics', price: 1299, stock: 12, detail: 'Flagship 4K HDR IPS display · Exceeds $1,000 limit', icon: 'monitor', tint: 'blue', tag: 'OVER $1K (DEMO SAGA)', rating: 4.8 },
-  { id: 7, name: 'Apple MacBook Air M3', category: 'Electronics', price: 1499, stock: 8, detail: '16GB unified memory, 512GB SSD · Exceeds $1,000 limit', icon: 'laptop', tint: 'lilac', tag: 'OVER $1K (DEMO SAGA)', rating: 4.9 },
-  { id: 8, name: 'Meta Quest 3 VR Headset', category: 'Electronics', price: 499, stock: 16, detail: 'Next-gen breakthrough mixed reality', icon: 'vr', tint: 'lilac', rating: 4.7 },
-  { id: 9, name: 'Sonos Era 100 Smart Speaker', category: 'Electronics', price: 249, stock: 18, detail: 'Acoustic smart home sound system', icon: 'speaker', tint: 'mint', rating: 4.6 },
+  // --- Electronics (from inventory_db) ---
+  { id: 1, name: 'Dell XPS 15 Laptop', category: 'Electronics', price: 1499.00, stock: 18, reserved_stock: 0, icon: null },
+  { id: 2, name: 'Apple iPhone 16 Pro', category: 'Electronics', price: 1099.00, stock: 30, reserved_stock: 0, icon: null },
+  { id: 3, name: 'Samsung Galaxy S25 Ultra', category: 'Electronics', price: 1199.00, stock: 22, reserved_stock: 0, icon: null },
+  { id: 4, name: 'LG UltraWide 34-inch Monitor', category: 'Electronics', price: 499.00, stock: 13, reserved_stock: 0, icon: null },
+  { id: 5, name: 'Sony PlayStation 5 Slim', category: 'Electronics', price: 449.00, stock: 20, reserved_stock: 0, icon: null },
+  { id: 6, name: 'JBL Flip 6 Bluetooth Speaker', category: 'Electronics', price: 129.00, stock: 34, reserved_stock: 0, icon: null },
+  { id: 7, name: 'Canon EOS R50 Mirrorless Camera', category: 'Electronics', price: 679.00, stock: 12, reserved_stock: 0, icon: null },
+  { id: 8, name: 'Apple iPad Air 11-inch', category: 'Electronics', price: 599.00, stock: 24, reserved_stock: 0, icon: null },
+  { id: 9, name: 'Kindle Paperwhite 16GB', category: 'Electronics', price: 149.00, stock: 40, reserved_stock: 0, icon: null },
+  { id: 10, name: 'Anker 737 Power Bank', category: 'Electronics', price: 109.00, stock: 45, reserved_stock: 0, icon: null },
 
-  // --- Clothing ---
-  { id: 10, name: 'Classic Vintage Denim Jacket', category: 'Clothing', price: 120, stock: 35, detail: '100% organic durable heavyweight cotton denim', icon: 'shirt', tint: 'blue', tag: 'TRENDING', rating: 4.8 },
-  { id: 11, name: 'Heavyweight Fleece Hoodie', category: 'Clothing', price: 75, stock: 55, detail: 'Brushed interior fleece with relaxed aesthetic cut', icon: 'shirt', tint: 'mint', rating: 4.7 },
-  { id: 12, name: 'Merino Wool Trench Coat', category: 'Clothing', price: 340, stock: 20, detail: 'Double-breasted tailored weatherproof outerwear', icon: 'shirt', tint: 'sand', rating: 4.9 },
-  { id: 13, name: 'Urban Techwear Cargo Pants', category: 'Clothing', price: 85, stock: 40, detail: 'Water-repellent stretch fabric with utility pockets', icon: 'shirt', tint: 'peach', rating: 4.6 },
-  { id: 14, name: 'Designer Italian Cashmere Parka', category: 'Clothing', price: 1150, stock: 6, detail: 'Handcrafted luxury goose-down parka · Exceeds $1,000 limit', icon: 'shirt', tint: 'lilac', tag: 'OVER $1K (DEMO SAGA)', rating: 5.0 },
+  // --- Clothing (from inventory_db) ---
+  { id: 11, name: "Levi's Men's 511 Slim Fit Jeans", category: 'Clothing', price: 69.00, stock: 35, reserved_stock: 0, icon: null },
+  { id: 12, name: 'Adidas Essentials 3-Stripes Track Pants', category: 'Clothing', price: 45.00, stock: 40, reserved_stock: 0, icon: null },
+  { id: 13, name: "Puma Men's Running T-Shirt", category: 'Clothing', price: 29.99, stock: 55, reserved_stock: 0, icon: null },
+  { id: 14, name: "H&M Women's Oversized Blazer", category: 'Clothing', price: 79.00, stock: 22, reserved_stock: 0, icon: null },
+  { id: 15, name: "Zara Women's Satin Midi Dress", category: 'Clothing', price: 89.00, stock: 18, reserved_stock: 0, icon: null },
+  { id: 16, name: 'Nike Dri-FIT Running Shorts', category: 'Clothing', price: 35.00, stock: 45, reserved_stock: 0, icon: null },
 
-  // --- Accessories ---
-  { id: 15, name: 'Top-Grain Leather Travel Backpack', category: 'Accessories', price: 180, stock: 25, detail: 'Full-grain vintage cowhide with padded laptop sleeve', icon: 'backpack', tint: 'sand', tag: 'POPULAR', rating: 4.8 },
-  { id: 16, name: 'Polarized Aviator Sunglasses', category: 'Accessories', price: 150, stock: 30, detail: 'Handmade acetate frame with UV400 polarized optics', icon: 'glasses', tint: 'blue', rating: 4.7 },
-  { id: 17, name: 'Minimalist RFID Slim Leather Wallet', category: 'Accessories', price: 45, stock: 75, detail: 'Bifold vegetable-tanned leather with quick card eject', icon: 'wallet', tint: 'mint', rating: 4.9 },
-  { id: 18, name: 'Stainless Steel Chronograph Watch', category: 'Accessories', price: 260, stock: 22, detail: 'Sapphire crystal face with Japanese quartz movement', icon: 'watch', tint: 'peach', rating: 4.8 },
-  { id: 19, name: 'Luxury Swiss Automatic Chronometer', category: 'Accessories', price: 1350, stock: 5, detail: 'Certified chronometer with 18k gold accents · Exceeds $1,000 limit', icon: 'watch', tint: 'lilac', tag: 'OVER $1K (DEMO SAGA)', rating: 5.0 },
+  // --- Accessories (from inventory_db) ---
+  { id: 17, name: 'Ray-Ban Classic Aviator Sunglasses', category: 'Accessories', price: 165.00, stock: 30, reserved_stock: 0, icon: null },
+  { id: 18, name: 'Fossil Grant Chronograph Watch', category: 'Accessories', price: 145.00, stock: 25, reserved_stock: 0, icon: null },
+  { id: 19, name: 'Bellroy Slim Leather Wallet', category: 'Accessories', price: 79.00, stock: 50, reserved_stock: 0, icon: null },
+  { id: 20, name: 'Herschel Little America Backpack', category: 'Accessories', price: 110.00, stock: 28, reserved_stock: 0, icon: null },
+  { id: 21, name: 'Rolex Submariner Date Watch', category: 'Accessories', price: 1450.00, stock: 4, reserved_stock: 0, icon: null },
 ];
 
 const mockOrders = [
