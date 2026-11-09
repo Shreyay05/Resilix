@@ -19,7 +19,7 @@ export async function placeOrder({ productId, quantity, amount, customer }) {
       return {
         status: 'FAILED',
         orderId: `RX-${Date.now().toString().slice(-6)}`,
-        reason: 'Payment declined: Amount exceeds limit (Threshold: 1,000)',
+        reason: 'Payment declined: Amount exceeds limit (Threshold: $1,000)',
         message: 'Demo saga compensation completed: reserved inventory was released.',
         steps: [
           { label: 'Order created', state: 'done' },
@@ -44,7 +44,7 @@ export async function placeOrder({ productId, quantity, amount, customer }) {
   }
 
   // Real microservices call to order-service orchestrator
-  console.log(`[CLIENT] Sending POST ${API_BASE}/orders (Product #${productId}, Qty ${quantity}, Amount ₹${amount}, Customer: ${customer || 'Customer'})`);
+  console.log(`[CLIENT] Sending POST ${API_BASE}/orders (Product #${productId}, Qty ${quantity}, Amount $${amount}, Customer: ${customer || 'Customer'})`);
   try {
     const response = await fetch(`${API_BASE}/orders`, {
       method: 'POST',

@@ -158,7 +158,7 @@ app.post('/orders', async (req, res) => {
 
   // Saga Execution
   try {
-    console.log(`\x1b[36m[SAGA START] [ORDER]\x1b[0m Starting Saga for Order #${orderId} (Product: #${pId}, Qty: ${qty}, Amount: ₹${amt})`);
+    console.log(`\x1b[36m[SAGA START] [ORDER]\x1b[0m Starting Saga for Order #${orderId} (Product: #${pId}, Qty: ${qty}, Amount: $${amt})`);
 
     // Step 2: Reserve Stock in Inventory Service
     console.log(`   --> [STEP 1/2] Calling Inventory Service POST /reserve...`);

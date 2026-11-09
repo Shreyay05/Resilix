@@ -1,19 +1,68 @@
 import { useMemo, useState, useEffect } from 'react'
 import {
-  Search, ShoppingBag, Heart, ChevronDown, ArrowRight, ArrowUpRight, Star,
-  Plus, Minus, X, Check, PackageCheck, ShieldCheck, Truck, Headphones,
-  Laptop, Keyboard, Mouse, Monitor, BatteryCharging, Gamepad2, Speaker,
-  HardDrive, Sparkles, CircleCheck, CircleX, RotateCcw, Menu, SlidersHorizontal,
-  AudioLines, Zap, Box, CreditCard, ChevronRight, User, Shield, Lock, RefreshCw, LogOut
+  Search, ShoppingBag, Heart, ChevronDown, ArrowRight, Star,
+  Plus, Minus, X, PackageCheck, Headphones, Laptop, Keyboard, Mouse, Monitor,
+  BatteryCharging, Gamepad2, Speaker, HardDrive, Sparkles, CircleCheck, CircleX, Menu,
+  SlidersHorizontal, Zap, Box, ChevronRight, Smartphone, Tablet, Camera, Shirt,
+  Watch, Pill, Stethoscope, ShoppingBasket, Sofa, Glasses, Briefcase, RotateCcw,
+  ShieldCheck, Truck, User, Shield, Lock, RefreshCw, LogOut, CreditCard, Check
 } from 'lucide-react'
-import { products as localProducts, categories } from './data/products'
 import { placeOrder, fetchInventory, adjustInventoryStock, fetchAllOrders } from './api/client'
 
-const money = n => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n * 83)
-const iconMap = { headphones: Headphones, headphones2: AudioLines, earbuds: AudioLines, mouse: Mouse, keyboard: Keyboard, monitor: Monitor, laptop: Laptop, ssd: HardDrive, battery: BatteryCharging, gamepad: Gamepad2, vr: Sparkles, speaker: Speaker }
-const visual = {
-  headphones: 'headphones', headphones2: 'headphones', earbuds: 'earbuds', mouse: 'mouse', keyboard: 'keyboard',
-  monitor: 'monitor', laptop: 'laptop', ssd: 'ssd', battery: 'battery', gamepad: 'gamepad', vr: 'vr', speaker: 'speaker'
+const INVENTORY_SERVICE = 'http://localhost:5002'
+
+// Prices are shown in US Dollars ($)
+const CURRENCY = 'USD'
+const LOCALE = 'en-US'
+const FREE_SHIPPING_OVER = 150
+const PAYMENT_THRESHOLD = 1000
+const money = n => new Intl.NumberFormat(LOCALE, { style: 'currency', currency: CURRENCY, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0)
+
+const iconMap = {
+  headphones: Headphones, mouse: Mouse, keyboard: Keyboard, monitor: Monitor, laptop: Laptop,
+  ssd: HardDrive, battery: BatteryCharging, gamepad: Gamepad2, sparkles: Sparkles, box: Box,
+  phone: Smartphone, tablet: Tablet, camera: Camera, speaker: Speaker, shirt: Shirt, watch: Watch,
+  pill: Pill, medical: Stethoscope, basket: ShoppingBasket, sofa: Sofa, glasses: Glasses, bag: Briefcase
+}
+
+// Pick an icon from the product's real DB category + name
+const nameRules = [
+  [/laptop|xps|macbook|thinkpad|notebook/, 'laptop'],
+  [/iphone|galaxy s|phone|pixel/, 'phone'],
+  [/ipad|tablet|kindle/, 'tablet'],
+  [/monitor|ultrawide|display/, 'monitor'],
+  [/playstation|xbox|nintendo|console|controller/, 'gamepad'],
+  [/speaker|soundbar|jbl/, 'speaker'],
+  [/camera|canon|gopro|mirrorless/, 'camera'],
+  [/power bank|charger|battery|anker/, 'battery'],
+  [/headphone|earbud|airpods|buds|headset/, 'headphones'],
+  [/keyboard/, 'keyboard'],
+  [/mouse/, 'mouse'],
+  [/ssd|hard drive|flash drive|memory card/, 'ssd'],
+  [/watch/, 'watch'],
+  [/sunglass|glasses/, 'glasses'],
+  [/backpack|handbag|wallet|\bbag\b/, 'bag'],
+]
+const categoryIcon = { Clothing: 'shirt', Cosmetics: 'sparkles', Medical: 'medical', Grocery: 'basket', 'Home & Living': 'sofa', Accessories: 'watch', Electronics: 'laptop' }
+
+function pickIcon(name = '', category = '') {
+  const n = name.toLowerCase()
+  if (category === 'Medical') return /vitamin|capsule|tablet|syrup|paracetamol|ointment/.test(n) ? 'pill' : 'medical'
+  if (category === 'Electronics' || category === 'Accessories') {
+    const hit = nameRules.find(([re]) => re.test(n))
+    if (hit) return hit[1]
+  }
+  return categoryIcon[category] || 'box'
+}
+
+function ProductArt({ product, large = false }) {
+  const iconKey = product.icon || pickIcon(product.name, product.category)
+  const Icon = iconMap[iconKey] || Box
+  return <div className={`product-art ${product.tint || 'lilac'} ${large ? 'large' : ''} art-${iconKey}`}>
+    <div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" />
+    <div className="art-icon"><Icon strokeWidth={1.15} /></div>
+    <span className="art-glint">✳</span>
+  </div>
 }
 
 // Preset Client-Side Accounts (Zero Database Storage)
@@ -22,25 +71,15 @@ const DEMO_USERS = {
   admin: { id: 'admin_1', name: 'Admin Manager', email: 'admin@resilix.com', role: 'admin' }
 }
 
-function ProductArt({ product, large = false }) {
-  const Icon = iconMap[product.icon] || Box
-  return <div className={`product-art ${product.tint || 'lilac'} ${large ? 'large' : ''} art-${visual[product.icon] || 'headphones'}`}>
-    <div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" />
-    <div className="art-icon"><Icon strokeWidth={1.15} /></div>
-    <span className="art-glint">✳</span>
-  </div>
-}
-
 /* =========================================================
    DEDICATED FULL-PAGE LOGIN VIEW (NO DATABASE REQUIRED)
 ========================================================= */
 function LoginPage({ onLogin }) {
-  const [selectedRole, setSelectedRole] = useState('customer') // 'customer' | 'admin'
+  const [selectedRole, setSelectedRole] = useState('customer')
   const [identifier, setIdentifier] = useState('customer@resilix.com')
   const [password, setPassword] = useState('customer123')
   const [errorMsg, setErrorMsg] = useState('')
 
-  // Handle Tab Switch
   const handleRoleTab = (role) => {
     setSelectedRole(role)
     setErrorMsg('')
@@ -53,47 +92,37 @@ function LoginPage({ onLogin }) {
     }
   }
 
-  // Handle Form Submit
-  const handleFormSubmit = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     setErrorMsg('')
+    const targetUser = DEMO_USERS[selectedRole]
 
-    if (selectedRole === 'admin') {
-      // Admin credential check (client-side demo)
-      if (identifier.toLowerCase().includes('admin') || password === 'admin123') {
-        onLogin(DEMO_USERS.admin)
-      } else {
-        setErrorMsg('Invalid admin credentials. Use admin@resilix.com / admin123')
-      }
+    if (
+      (identifier.trim().toLowerCase() === targetUser.email.toLowerCase() ||
+       identifier.trim().toLowerCase() === selectedRole) &&
+      (password === `${selectedRole}123` || password === 'admin123' || password === 'customer123')
+    ) {
+      onLogin(targetUser)
     } else {
-      // Customer login (any valid input or preset)
-      const user = {
-        id: `cust_${Date.now()}`,
-        name: identifier.split('@')[0] || 'Customer',
-        email: identifier,
-        role: 'customer'
-      }
-      onLogin(user)
+      setErrorMsg(`Invalid credentials. Demo password for ${selectedRole} is: ${selectedRole}123`)
     }
   }
 
   return (
-    <div className="login-page-screen">
-      <div className="login-card-container">
-        {/* Brand Header */}
+    <div className="login-screen-wrapper">
+      <div className="login-card-box">
         <div className="login-brand-header">
-          <div className="brand-mark">
-            <Zap size={24} fill="currentColor" />
+          <div className="login-brand-icon">
+            <Zap size={26} fill="currentColor" />
           </div>
-          <h1>resilix<span className="brand-dot">.</span></h1>
-          <p>Sign in to your Resilix Portal</p>
+          <h1>resilix<span>.</span></h1>
+          <p>Distributed Saga E-Commerce Architecture</p>
         </div>
 
-        {/* Role Tabs */}
-        <div className="role-tab-selector">
+        <div className="role-segmented-control">
           <button
             type="button"
-            className={`role-tab-btn ${selectedRole === 'customer' ? 'active' : ''}`}
+            className={`role-seg-btn ${selectedRole === 'customer' ? 'active' : ''}`}
             onClick={() => handleRoleTab('customer')}
           >
             <User size={14} />
@@ -101,52 +130,50 @@ function LoginPage({ onLogin }) {
           </button>
           <button
             type="button"
-            className={`role-tab-btn ${selectedRole === 'admin' ? 'active' : ''}`}
+            className={`role-seg-btn ${selectedRole === 'admin' ? 'active' : ''}`}
             onClick={() => handleRoleTab('admin')}
           >
             <Shield size={14} />
-            Admin Portal
+            Admin Operations
           </button>
         </div>
 
-        {errorMsg && (
-          <div style={{ background: '#fdf0ee', color: '#b03426', padding: '10px 14px', borderRadius: '7px', fontSize: '11px', marginBottom: '16px' }}>
-            {errorMsg}
-          </div>
-        )}
-
-        {/* Credentials Form */}
-        <form onSubmit={handleFormSubmit} className="login-form-fields">
-          <div className="form-input-group">
-            <label>{selectedRole === 'admin' ? 'Admin Email / Username' : 'Customer Email / Username'}</label>
+        <form onSubmit={handleSubmit} className="login-form-inner">
+          <label>
+            <span>{selectedRole === 'admin' ? 'Admin ID / Email' : 'Email Address'}</span>
             <input
               type="text"
               value={identifier}
-              onChange={e => setIdentifier(e.target.value)}
-              placeholder={selectedRole === 'admin' ? 'admin@resilix.com' : 'you@example.com'}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder={selectedRole === 'admin' ? 'admin@resilix.com' : 'customer@resilix.com'}
               required
             />
-          </div>
+          </label>
 
-          <div className="form-input-group">
-            <label>Password</label>
+          <label>
+            <span>Password</span>
             <input
               type="password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
-          </div>
+          </label>
+
+          {errorMsg && (
+            <div className="login-error-msg">
+              <CircleX size={14} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
 
           <button type="submit" className="login-submit-btn">
-            {selectedRole === 'admin' ? <Shield size={15} /> : <User size={15} />}
-            Enter as {selectedRole === 'admin' ? 'Administrator' : 'Customer'} <ArrowRight size={15} />
+            Log In as {selectedRole === 'admin' ? 'Administrator' : 'Customer'}
+            <ArrowRight size={16} />
           </button>
         </form>
 
-        {/* Quick 1-Click Login Buttons */}
-        <div className="quick-login-divider">
+        <div className="quick-access-separator">
           <span>Or Quick 1-Click Access</span>
         </div>
 
@@ -169,9 +196,8 @@ function LoginPage({ onLogin }) {
           </button>
         </div>
 
-        {/* Note indicating no database used */}
         <div className="demo-credentials-note">
-          <strong>Client-Side Demo Auth:</strong> Credentials are verified in memory with no database storage required.
+          <strong>Client-Side Demo Auth:</strong> Credentials are verified in memory with zero database storage required.
         </div>
       </div>
     </div>
@@ -181,41 +207,40 @@ function LoginPage({ onLogin }) {
 /* =========================================================
    MAIN APPLICATION
 ========================================================= */
-function App() {
-  // Session Authentication State (starts on Login Page)
+export default function App() {
   const [currentUser, setCurrentUser] = useState(null)
 
-  // Shop State
+  // Products & Categories (Dynamically fetched from DB/Inventory Service)
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('All products')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('featured')
+
+  // Shopping & UI state
   const [cart, setCart] = useState([])
   const [wishlist, setWishlist] = useState([])
   const [drawer, setDrawer] = useState(false)
   const [checkout, setCheckout] = useState(false)
+  const [orders, setOrders] = useState([])
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [customerLastReceipt, setCustomerLastReceipt] = useState(null)
   const [toast, setToast] = useState('')
   const [mobileMenu, setMobileMenu] = useState(false)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [address, setAddress] = useState('')
   const [placing, setPlacing] = useState(false)
-  const [page, setPage] = useState('shop') // 'shop' | 'inventory' (admin) | 'admin-orders' (admin) | 'receipt' (customer)
+  const [page, setPage] = useState('shop') // 'shop' | 'inventory' | 'admin-orders' | 'receipt'
   const [showWishlist, setShowWishlist] = useState(false)
 
-  // Orders State
-  const [orders, setOrders] = useState([])
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [customerLastReceipt, setCustomerLastReceipt] = useState(null)
-
-  // Admin Live State
-  const [liveInventory, setLiveInventory] = useState([])
-  const [loadingInventory, setLoadingInventory] = useState(false)
+  // Admin live audit state
   const [adminOrders, setAdminOrders] = useState([])
-  const [loadingOrders, setLoadingOrders] = useState(false)
+  const [loadingAdminData, setLoadingAdminData] = useState(false)
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(''), 2800) }
 
-  // Sync current user details with checkout
+  // Sync current user details with checkout inputs
   useEffect(() => {
     if (currentUser) {
       setFullName(currentUser.name)
@@ -223,17 +248,55 @@ function App() {
     }
   }, [currentUser])
 
-  // Load Admin Data when on Admin pages
+  // Fetch live products from Inventory Service (Port 5002) - Matches DB contents
+  const loadProducts = async () => {
+    try {
+      const res = await fetch(`${INVENTORY_SERVICE}/products`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const tints = ['lilac', 'sand', 'blue', 'mint', 'peach']
+      const formatted = data.map((p, idx) => {
+        const price = Number(p.price) || 0
+        const cat = (p.category || 'General').trim()
+        const available = p.available ?? Math.max(0, p.stock - (p.reserved_stock || 0))
+        return {
+          id: p.id,
+          name: p.name,
+          price,
+          category: cat,
+          stock: available,
+          total_stock: p.stock,
+          reserved_stock: p.reserved_stock || 0,
+          rating: p.rating ? Number(p.rating).toFixed(1) : (4.5 + (p.id % 5) * 0.1).toFixed(1),
+          detail: p.detail || `${cat} - ${p.name}`,
+          icon: p.icon || pickIcon(p.name, cat),
+          tag: p.tag || (price > PAYMENT_THRESHOLD ? `OVER $1K (DEMO SAGA)` : ''),
+          tint: p.tint || tints[idx % tints.length]
+        }
+      })
+      setProducts(formatted)
+    } catch (err) {
+      console.warn('Could not fetch live inventory products from 5002:', err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load Admin Data (all system orders & inventory)
   const refreshAdminData = async () => {
     if (!currentUser || currentUser.role !== 'admin') return
-    setLoadingInventory(true)
-    setLoadingOrders(true)
-    const [inv, ords] = await Promise.all([fetchInventory(), fetchAllOrders()])
-    if (inv && Array.isArray(inv)) setLiveInventory(inv)
+    setLoadingAdminData(true)
+    const [_, ords] = await Promise.all([loadProducts(), fetchAllOrders()])
     if (ords && Array.isArray(ords)) setAdminOrders(ords)
-    setLoadingInventory(false)
-    setLoadingOrders(false)
+    setLoadingAdminData(false)
   }
+
+  // Boot & background polling to keep UI aligned with DB
+  useEffect(() => {
+    loadProducts()
+    const timer = setInterval(loadProducts, 10000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (currentUser?.role === 'admin' && (page === 'inventory' || page === 'admin-orders')) {
@@ -241,19 +304,25 @@ function App() {
     }
   }, [page, currentUser])
 
+  // Dynamically extract categories from database products
+  const categories = useMemo(() => {
+    const cats = [...new Set(products.map(p => p.category))].filter(Boolean)
+    return ['All products', ...cats]
+  }, [products])
+
   const filtered = useMemo(() => {
-    let list = localProducts.filter(p => (category === 'All products' || p.category === category)
+    let list = products.filter(p => (category === 'All products' || p.category === category)
       && (p.name.toLowerCase().includes(search.toLowerCase()) || p.detail.toLowerCase().includes(search.toLowerCase()))
       && (!showWishlist || wishlist.includes(p.id)))
-    if (sort === 'low') list = [...list].sort((a,b) => a.price-b.price)
-    if (sort === 'high') list = [...list].sort((a,b) => b.price-a.price)
-    if (sort === 'rating') list = [...list].sort((a,b) => b.rating-a.rating)
+    if (sort === 'low') list = [...list].sort((a,b) => a.price - b.price)
+    if (sort === 'high') list = [...list].sort((a,b) => b.price - a.price)
+    if (sort === 'rating') list = [...list].sort((a,b) => b.rating - a.rating)
     return list
-  }, [category, search, sort, showWishlist, wishlist])
+  }, [category, search, sort, showWishlist, wishlist, products])
 
   const count = cart.reduce((n, item) => n + item.quantity, 0)
   const subtotal = cart.reduce((n, item) => n + item.price * item.quantity, 0)
-  const shipping = subtotal >= 150 ? 0 : 8
+  const shipping = subtotal >= FREE_SHIPPING_OVER ? 0 : 8
   const total = subtotal + shipping
 
   const addToCart = p => {
@@ -268,7 +337,27 @@ function App() {
   const toggleWish = id => setWishlist(old => old.includes(id) ? old.filter(x => x !== id) : [...old, id])
   const beginCheckout = () => { if (!cart.length) return; setDrawer(false); setCheckout(true) }
 
-  // Submit Order via Saga Orchestrator
+  // Admin Restock Action
+  async function handleRestock(productId, amount = 10) {
+    try {
+      await adjustInventoryStock(productId, amount)
+      notify(`Restocked Product #${productId} (+${amount} units)`)
+      await loadProducts()
+      if (currentUser?.role === 'admin') refreshAdminData()
+    } catch (err) {
+      notify(`Restock failed: ${err.message}`)
+    }
+  }
+
+  // Logout Function
+  const handleLogout = () => {
+    setCurrentUser(null)
+    setPage('shop')
+    setCart([])
+    notify('Logged out successfully.')
+  }
+
+  // Submit Order via Distributed Saga Orchestrator
   async function submitOrder(e) {
     e.preventDefault()
     if (!fullName.trim() || !email.trim() || !address.trim()) return
@@ -284,9 +373,9 @@ function App() {
           customer: fullName
         }))
       }
+
       const failed = results.find(r => r.status === 'FAILED' || r.status === 'failed')
       const result = failed || results[0]
-
       const orderRecord = {
         ...result,
         customer: fullName,
@@ -304,44 +393,26 @@ function App() {
       setCheckout(false)
       setCart([])
 
-      // Customer sees receipt only, admin can see full saga orders
+      // Customer sees receipt; Admin can inspect full saga trace
       if (currentUser?.role === 'admin') {
         setSelectedOrder(orderRecord)
         setPage('admin-orders')
       } else {
         setPage('receipt')
       }
-      notify(failed ? 'Order cancelled: Payment declined (exceeds ₹1,000 threshold).' : 'Order placed successfully!')
+      notify(failed ? 'Order cancelled: Payment declined (exceeds $1,000.00 threshold).' : 'Order placed successfully!')
     } catch (err) {
       notify('Could not place order. Please check backend connection.')
     } finally {
       setPlacing(false)
+      loadProducts()
     }
-  }
-
-  // Handle Admin Restocking
-  async function handleRestock(productId, amount = 10) {
-    try {
-      await adjustInventoryStock(productId, amount)
-      notify(`Restocked Product #${productId} (+${amount} units)`)
-      refreshAdminData()
-    } catch (err) {
-      notify(`Restock failed: ${err.message}`)
-    }
-  }
-
-  // Logout Function
-  const handleLogout = () => {
-    setCurrentUser(null)
-    setPage('shop')
-    setCart([])
-    notify('Logged out successfully.')
   }
 
   const goShop = () => { setPage('shop'); setShowWishlist(false); setCategory('All products') }
   const goCategory = c => { setPage('shop'); setShowWishlist(false); setCategory(c); setMobileMenu(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
-  // IF NOT LOGGED IN -> RENDER DEDICATED LOGIN PAGE
+  // IF NOT LOGGED IN -> RENDER DEDICATED FULL-PAGE LOGIN
   if (!currentUser) {
     return <LoginPage onLogin={(user) => {
       setCurrentUser(user)
@@ -349,17 +420,22 @@ function App() {
     }} />
   }
 
-  // NORMAL RESILIX PAGE (ROLE-BASED VIEWS)
+  if (loading) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace', color: '#244b39' }}>Loading Resilix Distributed Storefront...</div>
+  }
+
   return <div className="app-shell">
     {/* Announcement bar */}
     <div className="announcement">
       <Sparkles size={13} />
-      <span>Saga Pattern Microservices Demo · Payment Threshold: <strong>₹1,000</strong></span>
+      <span>Saga Pattern Microservices Demo · Payment Threshold: <strong>$1,000.00</strong></span>
+      <span>·</span>
+      <span>Free shipping over {money(FREE_SHIPPING_OVER)}</span>
       <span>·</span>
       <span>Logged in as: <strong style={{ textTransform: 'uppercase' }}>{currentUser.role}</strong> ({currentUser.name})</span>
     </div>
 
-    {/* Top navigation header */}
+    {/* Topbar navigation header */}
     <header className="topbar">
       <button className="mobile-menu icon-button" onClick={() => setMobileMenu(!mobileMenu)} aria-label="Open menu"><Menu /></button>
       <button className="brand" onClick={goShop} aria-label="Resilix home">
@@ -372,11 +448,17 @@ function App() {
         <button className={page === 'shop' && category === 'All products' && !showWishlist ? 'nav-active' : ''} onClick={goShop}>
           Shop all
         </button>
-        <button onClick={() => goCategory('Audio')}>Audio</button>
-        <button onClick={() => goCategory('Accessories')}>Accessories</button>
-        <button onClick={() => goCategory('Computers')}>Computers</button>
+        {categories.slice(1, 5).map(c => (
+          <button
+            key={c}
+            className={page === 'shop' && category === c && !showWishlist ? 'nav-active' : ''}
+            onClick={() => goCategory(c)}
+          >
+            {c}
+          </button>
+        ))}
 
-        {/* ADMIN ONLY NAVIGATION TABS */}
+        {/* ADMIN ONLY TABS */}
         {currentUser.role === 'admin' ? (
           <>
             <button
@@ -400,7 +482,7 @@ function App() {
               className={page === 'receipt' ? 'nav-active' : ''}
               onClick={() => { setPage('receipt'); setMobileMenu(false); }}
             >
-              My Receipt
+              Recent Receipt
             </button>
           )
         )}
@@ -442,47 +524,47 @@ function App() {
     {page === 'shop' && <>
       {!showWishlist && category === 'All products' && !search && <section className="hero">
         <div className="hero-copy">
-          <div className="eyebrow"><span className="eyebrow-line" /> THE EVERYDAY TECH EDITION</div>
-          <h1>Good tech.<br /><em>Better days.</em></h1>
-          <p>Thoughtful tech for the things you love doing. Transactions protected with the Saga pattern.</p>
+          <div className="eyebrow"><span className="eyebrow-line" /> LIVE DATABASE CATALOG</div>
+          <h1>Quality goods.<br /><em>Delivered securely.</em></h1>
+          <p>Multi-category products synchronized directly with PostgreSQL. Transactions protected with the Saga pattern.</p>
           <button className="primary-button" onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}>
             Explore the collection <ArrowRight size={17} />
           </button>
           <div className="hero-proof">
             <div className="avatar-stack"><span>J</span><span>A</span><span>M</span></div>
-            <div><div className="proof-stars">★★★★★</div><small>Payment failure threshold: ₹1,000</small></div>
+            <div><div className="proof-stars">★★★★★</div><small>Payment failure threshold: $1,000.00</small></div>
           </div>
         </div>
         <div className="hero-visual">
-          <div className="hero-label label-top"><span className="pulse" /> THE DAILY DRIVER</div>
-          <div className="hero-product"><ProductArt product={localProducts[0]} large /></div>
+          <div className="hero-label label-top"><span className="pulse" /> LIVE MICROSERVICE SYNC</div>
+          <div className="hero-product">{products[0] && <ProductArt product={products[0]} large />}</div>
           <div className="hero-product-note">
             <div>
               <span>01 / FEATURED</span>
-              <strong>Sony WH-1000XM5</strong>
-              <small>Silence the noise. Find your flow.</small>
+              <strong>{products[0]?.name}</strong>
+              <small>{products[0]?.category} · {products[0]?.detail}</small>
             </div>
-            <b>{money(399)}</b>
+            <b>{money(products[0]?.price)}</b>
           </div>
-          <div className="floating-chip chip-a"><AudioLines size={16} /><span>Pure sound<br /><b>All day long</b></span></div>
-          <div className="floating-chip chip-b"><ShieldCheck size={17} /><span>Saga Protected<br /><b>Automatic Rollback</b></span></div>
+          <div className="floating-chip chip-a"><Zap size={16} /><span>Live Stock<br /><b>{products[0]?.stock} in database</b></span></div>
+          <div className="floating-chip chip-b"><ShieldCheck size={17} /><span>Saga Protected<br /><b>Rollback &gt; $1,000</b></span></div>
           <div className="hero-spark spark-a">✳</div><div className="hero-spark spark-b">✳</div>
         </div>
       </section>}
 
       <section className="trust-strip">
         <div><Truck /><span><b>Fast delivery</b><small>On all orders</small></span></div>
-        <div><ShieldCheck /><span><b>Saga Reliability</b><small>Threshold: ₹1,000</small></span></div>
+        <div><ShieldCheck /><span><b>Saga Reliability</b><small>Threshold: $1,000.00</small></span></div>
         <div><RotateCcw /><span><b>Automatic Compensation</b><small>Stock releases on payment decline</small></span></div>
-        <div><Headphones /><span><b>Live Support</b><small>Role: {currentUser.role.toUpperCase()}</small></span></div>
+        <div><Headphones /><span><b>Role: {currentUser.role.toUpperCase()}</b><small>{currentUser.name}</small></span></div>
       </section>
 
       <main id="products" className="catalog">
         <div className="section-heading">
           <div>
-            <div className="eyebrow">{showWishlist ? 'SAVED FOR LATER' : 'THE RESILIX COLLECTION'}</div>
-            <h2>{showWishlist ? 'Your wishlist' : category === 'All products' ? 'Find your next favourite.' : category + ', made better.'}</h2>
-            <p>{showWishlist ? 'All the good stuff you have your eye on.' : 'Thoughtfully chosen tech essentials.'}</p>
+            <div className="eyebrow">{showWishlist ? 'SAVED FOR LATER' : 'LIVE DATABASE INVENTORY'}</div>
+            <h2>{showWishlist ? 'Your wishlist' : category === 'All products' ? 'Explore all products.' : category}</h2>
+            <p>Real-time inventory synchronized across distributed database microservices.</p>
           </div>
           <div className="catalog-controls">
             <label className="sort-control">
@@ -499,7 +581,15 @@ function App() {
         </div>
 
         <div className="category-pills">
-          {categories.map(c => <button key={c} className={category === c && !showWishlist ? 'selected' : ''} onClick={() => { setCategory(c); setShowWishlist(false); }}>{c}</button>)}
+          {categories.map(c => (
+            <button
+              key={c}
+              className={category === c && !showWishlist ? 'selected' : ''}
+              onClick={() => { setCategory(c); setShowWishlist(false); }}
+            >
+              {c}
+            </button>
+          ))}
         </div>
 
         {(search || showWishlist) && <div className="result-note">
@@ -520,10 +610,9 @@ function App() {
               </div>
               <div className="product-meta"><span>{p.category}</span><span className="rating"><Star size={12} fill="currentColor" />{p.rating}</span></div>
               <h3>{p.name}</h3>
-              <p className="product-detail">{p.detail}</p>
+              <p className="product-detail">Stock: <b>{p.stock}</b> available</p>
               <div className="product-price">
                 <strong>{money(p.price)}</strong>
-                {p.oldPrice && <del>{money(p.oldPrice)}</del>}
                 <button onClick={() => addToCart(p)} aria-label={`Add ${p.name} to bag`}><Plus size={17} /></button>
               </div>
             </article>)}
@@ -531,9 +620,9 @@ function App() {
         ) : (
           <div className="empty-state">
             <Heart size={28} />
-            <h3>Nothing here just yet</h3>
-            <p>Try another search or explore the full collection.</p>
-            <button className="primary-button" onClick={goShop}>Explore all products <ArrowRight size={16} /></button>
+            <h3>No products found</h3>
+            <p>Try searching another term or selecting a different category.</p>
+            <button className="primary-button" onClick={goShop}>Reset filters <ArrowRight size={16} /></button>
           </div>
         )}
       </main>
@@ -550,9 +639,9 @@ function App() {
               <p style={{ fontSize: '12px', color: '#7a8277', margin: 0 }}>Real-time row-level lock tracking, stock levels, and replenishment.</p>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="admin-tab-btn active" onClick={refreshAdminData} disabled={loadingInventory}>
-                <RefreshCw size={13} className={loadingInventory ? 'spinner' : ''} />
-                {loadingInventory ? 'Refreshing...' : 'Refresh Stock'}
+              <button className="admin-tab-btn active" onClick={refreshAdminData} disabled={loadingAdminData}>
+                <RefreshCw size={13} className={loadingAdminData ? 'spinner' : ''} />
+                {loadingAdminData ? 'Refreshing...' : 'Refresh Stock'}
               </button>
             </div>
           </div>
@@ -563,6 +652,8 @@ function App() {
                 <tr>
                   <th>Product ID</th>
                   <th>Product Name</th>
+                  <th>Category</th>
+                  <th>Price ($)</th>
                   <th>Total Physical Stock</th>
                   <th>Reserved Stock (Saga In-Flight)</th>
                   <th>Available to Purchase</th>
@@ -571,14 +662,16 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {(liveInventory.length ? liveInventory : localProducts).map(p => {
-                  const totalStock = p.stock ?? 0
+                {products.map(p => {
+                  const totalStock = p.total_stock ?? p.stock
                   const reserved = p.reserved_stock ?? 0
-                  const available = totalStock - reserved
+                  const available = p.stock
                   return (
                     <tr key={p.id}>
                       <td style={{ fontWeight: 700, color: '#38533a' }}>#{p.id}</td>
                       <td><b>{p.name}</b></td>
+                      <td><span style={{ fontSize: '11px', background: '#eaf0e4', padding: '3px 8px', borderRadius: '4px', fontWeight: 600 }}>{p.category}</span></td>
+                      <td><strong>{money(p.price)}</strong></td>
                       <td><strong>{totalStock}</strong> units</td>
                       <td>
                         <span style={{ color: reserved > 0 ? '#b35d25' : '#72796e', fontWeight: reserved > 0 ? 700 : 400 }}>
@@ -627,20 +720,19 @@ function App() {
               <h2 style={{ font: '700 28px Manrope', margin: '6px 0 4px', color: '#243425' }}>Order Details &amp; Saga Transactions</h2>
               <p style={{ fontSize: '12px', color: '#7a8277', margin: 0 }}>System-wide customer orders, transaction outcomes, and distributed rollback traces.</p>
             </div>
-            <button className="admin-tab-btn active" onClick={refreshAdminData} disabled={loadingOrders}>
-              <RefreshCw size={13} className={loadingOrders ? 'spinner' : ''} />
-              {loadingOrders ? 'Refreshing...' : 'Refresh Orders'}
+            <button className="admin-tab-btn active" onClick={refreshAdminData} disabled={loadingAdminData}>
+              <RefreshCw size={13} className={loadingAdminData ? 'spinner' : ''} />
+              {loadingAdminData ? 'Refreshing...' : 'Refresh Orders'}
             </button>
           </div>
 
-          {/* Orders list */}
           <div className="admin-table-card">
             <table className="admin-table">
               <thead>
                 <tr>
                   <th>Order ID</th>
                   <th>Customer</th>
-                  <th>Product ID / Name</th>
+                  <th>Product ID / Items</th>
                   <th>Quantity</th>
                   <th>Amount</th>
                   <th>Status</th>
@@ -649,41 +741,36 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {(orders.length > 0 ? orders : adminOrders).length === 0 ? (
+                {adminOrders.length > 0 ? (
+                  adminOrders.map(o => (
+                    <tr key={o.id}>
+                      <td style={{ fontWeight: 700, color: '#2e4933' }}>#{o.id}</td>
+                      <td><b>{o.customer || 'Customer'}</b></td>
+                      <td>Product #{o.product_id}</td>
+                      <td>{o.quantity}</td>
+                      <td><strong>{money(o.amount || o.total)}</strong></td>
+                      <td>
+                        <span className={`status-pill ${o.status === 'COMPLETED' ? 'status-success' : 'status-failed'}`}>
+                          {o.status}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '11px', color: '#73796d' }}>{o.created_at || 'Recent'}</td>
+                      <td>
+                        <button
+                          className="inspect-btn"
+                          onClick={() => setSelectedOrder(o)}
+                        >
+                          Trace Saga <ChevronRight size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#7f877b' }}>
-                      No orders placed in this session yet. Go to the shop and place an order to see live Saga orchestration!
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: '#7a8074' }}>
+                      No orders placed yet. Place an order through the store to observe live Saga traces!
                     </td>
                   </tr>
-                ) : (
-                  (orders.length > 0 ? orders : adminOrders).map((o, idx) => {
-                    const isSuccess = o.status === 'COMPLETED'
-                    return (
-                      <tr key={(o.id || o.orderId || idx)}>
-                        <td style={{ fontWeight: 700, color: '#2c4d32' }}>#{o.id || o.orderId}</td>
-                        <td><b>{o.customer || 'Customer'}</b></td>
-                        <td>{o.items?.[0]?.name || `Product #${o.product_id || 1}`}</td>
-                        <td>{o.quantity || o.items?.[0]?.quantity || 1} unit(s)</td>
-                        <td><strong>₹{o.amount || o.total}</strong></td>
-                        <td>
-                          <span className={`status-pill ${isSuccess ? 'status-success' : 'status-failed'}`}>
-                            {isSuccess ? <CircleCheck size={13} /> : <CircleX size={13} />}
-                            {o.status}
-                          </span>
-                        </td>
-                        <td><small style={{ color: '#888f83' }}>{o.date || o.created_at || 'Just now'}</small></td>
-                        <td>
-                          <button
-                            className="text-button"
-                            onClick={() => setSelectedOrder(o)}
-                            style={{ color: '#244b39', fontWeight: 700 }}
-                          >
-                            Inspect Saga <ArrowUpRight size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })
                 )}
               </tbody>
             </table>
@@ -724,7 +811,7 @@ function App() {
               <div className="compensation-note" style={{ marginTop: '20px' }}>
                 <RotateCcw size={16} />
                 <span>
-                  <b>Payment Declined:</b> Total order amount exceeded the single transaction limit of <strong>₹1,000</strong>. You were not charged, and your items were returned to inventory.
+                  <b>Payment Declined:</b> Total order amount exceeded the single transaction limit of <strong>$1,000.00</strong>. You were not charged, and your items were returned to inventory.
                 </span>
               </div>
             )}
@@ -741,7 +828,7 @@ function App() {
 
             <div className="receipt-total-row">
               <span>Total Paid:</span>
-              <span>{customerLastReceipt.status === 'COMPLETED' ? money(customerLastReceipt.total) : '₹0'}</span>
+              <span>{customerLastReceipt.status === 'COMPLETED' ? money(customerLastReceipt.total) : '$0.00'}</span>
             </div>
 
             <div style={{ marginTop: '24px', fontSize: '11px', color: '#7c8376', lineHeight: 1.6 }}>
@@ -782,7 +869,7 @@ function App() {
               <p>
                 {selectedOrder.status === 'COMPLETED'
                   ? 'All microservice steps (order, reservation, payment) finished successfully.'
-                  : `Payment declined (${selectedOrder.reason || 'Amount exceeds ₹1,000'}). Compensating actions released reserved stock automatically.`}
+                  : `Payment declined (${selectedOrder.reason || 'Amount exceeds $1,000.00'}). Compensating actions released reserved stock automatically.`}
               </p>
             </div>
           </div>
@@ -794,7 +881,7 @@ function App() {
               { label: 'Inventory reserved', state: 'done' },
               selectedOrder.status === 'COMPLETED'
                 ? { label: 'Payment approved', state: 'done' }
-                : { label: 'Payment declined (Threshold: ₹1,000)', state: 'failed' },
+                : { label: 'Payment declined (Threshold: $1,000.00)', state: 'failed' },
               selectedOrder.status === 'COMPLETED'
                 ? { label: 'Order marked COMPLETED', state: 'done' }
                 : { label: 'Compensating action: Reserved stock released', state: 'compensated' },
@@ -812,33 +899,44 @@ function App() {
           </div>
 
           <div className="detail-total">
-            <span>Customer: <b>{selectedOrder.customer || 'Customer'}</b></span>
-            <strong>{money(selectedOrder.amount || selectedOrder.total || 0)}</strong>
+            <span>Order total</span>
+            <strong>{money(selectedOrder.amount || selectedOrder.total)}</strong>
           </div>
 
           <button className="primary-button full-button" onClick={() => setSelectedOrder(null)}>
-            Close Inspection <ArrowRight size={16} />
+            Close Audit Inspector
           </button>
         </section>
       </div>
     )}
 
-    {/* Shopping Bag Drawer */}
+    {/* Cart Drawer */}
     {drawer && <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setDrawer(false)}>
       <aside className="cart-drawer">
         <div className="drawer-head">
-          <div><span className="eyebrow">YOUR BAG</span><h2>Items ({count})</h2></div>
-          <button className="icon-button" onClick={() => setDrawer(false)}><X /></button>
+          <div><span className="eyebrow">YOUR CART</span><h2>Bag <span>({count})</span></h2></div>
+          <button className="icon-button" onClick={() => setDrawer(false)} aria-label="Close cart"><X /></button>
         </div>
+
         {cart.length === 0 ? (
           <div className="drawer-empty">
             <ShoppingBag size={32} />
             <h3>Your bag is empty</h3>
-            <p>Browse our tech collection and pick your favorite items.</p>
-            <button className="primary-button" onClick={() => setDrawer(false)}>Explore products <ArrowRight size={16} /></button>
+            <p>Explore the catalog and add items to your cart.</p>
+            <button className="primary-button" onClick={() => setDrawer(false)}>Continue Shopping</button>
           </div>
         ) : (
           <>
+            <div className="shipping-progress">
+              <div className="shipping-progress-label">
+                <Truck size={14} />
+                <span>{subtotal >= FREE_SHIPPING_OVER ? 'You unlocked free delivery!' : `Add ${money(FREE_SHIPPING_OVER - subtotal)} more for free delivery`}</span>
+              </div>
+              <div className="progress-track">
+                <span style={{ width: `${Math.min(100, (subtotal / FREE_SHIPPING_OVER) * 100)}%` }} />
+              </div>
+            </div>
+
             <div className="cart-items">
               {cart.map(item => <div className="cart-item" key={item.id}>
                 <ProductArt product={item} />
@@ -847,14 +945,14 @@ function App() {
                   <b>{item.name}</b>
                   <strong>{money(item.price)}</strong>
                   <div className="qty-control">
-                    <button onClick={() => item.quantity === 1 ? setCart(old => old.filter(i => i.id !== item.id)) : updateQty(item.id, -1)}><Minus size={12} /></button>
+                    <button onClick={() => updateQty(item.id, -1)} aria-label="Decrease quantity"><Minus size={12} /></button>
                     <span>{item.quantity}</span>
-                    <button onClick={() => updateQty(item.id, 1)} disabled={item.quantity >= item.stock}><Plus size={12} /></button>
+                    <button onClick={() => updateQty(item.id, 1)} disabled={item.quantity >= item.stock} aria-label="Increase quantity"><Plus size={12} /></button>
                   </div>
                 </div>
-                <button className="remove-item" onClick={() => setCart(old => old.filter(i => i.id !== item.id))}><X size={15} /></button>
               </div>)}
             </div>
+
             <div className="cart-summary">
               <div><span>Subtotal</span><b>{money(subtotal)}</b></div>
               <div><span>Shipping</span><b>{shipping === 0 ? 'FREE' : money(shipping)}</b></div>
@@ -883,7 +981,7 @@ function App() {
               <CreditCard size={18} />
               <div>
                 <b>Payment Limit Policy:</b>
-                <p>Transactions ≤ <strong>₹1,000</strong> succeed immediately. Orders <strong>&gt; ₹1,000</strong> trigger automated Saga compensation rollback.</p>
+                <p>Transactions ≤ <strong>$1,000.00</strong> succeed immediately. Orders <strong>&gt; $1,000.00</strong> trigger automated Saga compensation rollback.</p>
               </div>
             </div>
             <button className="checkout-button" type="submit" disabled={placing}>
@@ -914,7 +1012,7 @@ function App() {
           <span className="brand-mark"><Zap size={18} fill="currentColor" /></span>
           <span>resilix<span className="brand-dot">.</span></span>
         </button>
-        <p>Everyday tech storefront with Distributed Saga Concurrency Control.</p>
+        <p>Curated storefront synchronized with live PostgreSQL databases and Distributed Saga Concurrency Control.</p>
       </div>
       <div className="footer-links">
         <span>CURRENT SESSION</span>
@@ -930,12 +1028,10 @@ function App() {
       </div>
       <div className="footer-bottom">
         <span>© 2026 Resilix Store. Role-Based Access Control Enabled.</span>
-        <span><ShieldCheck size={14} /> Threshold: ₹1,000</span>
+        <span><ShieldCheck size={14} /> Threshold: $1,000.00</span>
       </div>
     </footer>
 
     {toast && <div className="toast"><CircleCheck size={17} />{toast}</div>}
   </div>
 }
-
-export default App

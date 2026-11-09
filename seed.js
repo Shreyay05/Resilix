@@ -52,58 +52,41 @@ const paymentPool = new Pool({
 });
 
 const products = [
-  // --- Audio & Wearables ---
-  { name: 'Sony WH-1000XM5 Headphones', stock: 25 },
-  { name: 'Apple AirPods Pro (2nd Gen)', stock: 45 },
-  { name: 'Bose QuietComfort Ultra', stock: 18 },
-  { name: 'Sennheiser HD 660S2 Open-Back', stock: 10 },
-  { name: 'Blue Yeti USB Microphone', stock: 22 },
+  // --- Electronics ---
+  { id: 1, name: 'Sony WH-1000XM5 Headphones', category: 'Electronics', price: 399, stock: 25, detail: 'Wireless noise cancelling headphones', icon: 'headphones', tint: 'lilac', tag: 'BESTSELLER', rating: 4.9 },
+  { id: 2, name: 'Apple AirPods Pro 2', category: 'Electronics', price: 199, stock: 45, detail: 'Adaptive audio, active noise cancellation', icon: 'earbuds', tint: 'sand', tag: 'DEAL', rating: 4.8 },
+  { id: 3, name: 'Bose QuietComfort Ultra', category: 'Electronics', price: 429, stock: 18, detail: 'Immersive spatial audio headphones', icon: 'headphones2', tint: 'blue', rating: 4.8 },
+  { id: 4, name: 'Logitech MX Master 3S Mouse', category: 'Electronics', price: 99, stock: 50, detail: 'Ergonomic performance wireless mouse', icon: 'mouse', tint: 'mint', rating: 4.7 },
+  { id: 5, name: 'Keychron K2 Mechanical Keyboard', category: 'Electronics', price: 110, stock: 30, detail: 'Wireless compact tactile keyboard', icon: 'keyboard', tint: 'peach', rating: 4.7 },
+  { id: 6, name: 'Dell UltraSharp 27" 4K Monitor', category: 'Electronics', price: 1299, stock: 12, detail: 'Flagship 4K HDR IPS display · Exceeds $1,000 limit', icon: 'monitor', tint: 'blue', tag: 'OVER $1K (DEMO SAGA)', rating: 4.8 },
+  { id: 7, name: 'Apple MacBook Air M3', category: 'Electronics', price: 1499, stock: 8, detail: '16GB unified memory, 512GB SSD · Exceeds $1,000 limit', icon: 'laptop', tint: 'lilac', tag: 'OVER $1K (DEMO SAGA)', rating: 4.9 },
+  { id: 8, name: 'Meta Quest 3 VR Headset', category: 'Electronics', price: 499, stock: 16, detail: 'Next-gen breakthrough mixed reality', icon: 'vr', tint: 'lilac', rating: 4.7 },
+  { id: 9, name: 'Sonos Era 100 Smart Speaker', category: 'Electronics', price: 249, stock: 18, detail: 'Acoustic smart home sound system', icon: 'speaker', tint: 'mint', rating: 4.6 },
 
-  // --- PC Peripherals & Displays ---
-  { name: 'Logitech MX Master 3S Mouse', stock: 50 },
-  { name: 'Keychron K2 Mechanical Keyboard', stock: 30 },
-  { name: 'Razer DeathAdder V3 Pro', stock: 35 },
-  { name: 'Dell UltraSharp 27" 4K Monitor', stock: 12 },
-  { name: 'LG UltraGear 34" Curved OLED', stock: 7 },
-  { name: 'CalDigit TS4 Thunderbolt 4 Dock', stock: 15 },
+  // --- Clothing ---
+  { id: 10, name: 'Classic Vintage Denim Jacket', category: 'Clothing', price: 120, stock: 35, detail: '100% organic durable heavyweight cotton denim', icon: 'shirt', tint: 'blue', tag: 'TRENDING', rating: 4.8 },
+  { id: 11, name: 'Heavyweight Fleece Hoodie', category: 'Clothing', price: 75, stock: 55, detail: 'Brushed interior fleece with relaxed aesthetic cut', icon: 'shirt', tint: 'mint', rating: 4.7 },
+  { id: 12, name: 'Merino Wool Trench Coat', category: 'Clothing', price: 340, stock: 20, detail: 'Double-breasted tailored weatherproof outerwear', icon: 'shirt', tint: 'sand', rating: 4.9 },
+  { id: 13, name: 'Urban Techwear Cargo Pants', category: 'Clothing', price: 85, stock: 40, detail: 'Water-repellent stretch fabric with utility pockets', icon: 'shirt', tint: 'peach', rating: 4.6 },
+  { id: 14, name: 'Designer Italian Cashmere Parka', category: 'Clothing', price: 1150, stock: 6, detail: 'Handcrafted luxury goose-down parka · Exceeds $1,000 limit', icon: 'shirt', tint: 'lilac', tag: 'OVER $1K (DEMO SAGA)', rating: 5.0 },
 
-  // --- Laptops & Computers ---
-  { name: 'Apple MacBook Air M3 (16GB, 512GB)', stock: 8 },
-  { name: 'Dell XPS 15 Laptop', stock: 10 },
-  { name: 'ASUS ROG Zephyrus G16 Gaming Laptop', stock: 5 },
-  { name: 'Lenovo ThinkPad X1 Carbon Gen 11', stock: 14 },
-
-  // --- Storage & Power ---
-  { name: 'Samsung T7 1TB Portable SSD', stock: 60 },
-  { name: 'SanDisk 2TB Extreme Portable SSD', stock: 40 },
-  { name: 'Anker 737 Power Bank (24k mAh)', stock: 40 },
-  { name: 'Belkin 3-in-1 MagSafe Charger', stock: 28 },
-
-  // --- Gaming & Entertainment ---
-  { name: 'PlayStation 5 DualSense Edge Controller', stock: 20 },
-  { name: 'Asus ROG Ally Handheld Console', stock: 15 },
-  { name: 'Steam Deck OLED 512GB', stock: 12 },
-  { name: 'LG C3 55" OLED TV', stock: 5 },
-  { name: 'Meta Quest 3 VR Headset', stock: 16 },
-
-  // --- Smart Home & Networking ---
-  { name: 'Elgato Stream Deck MK.2', stock: 25 },
-  { name: 'Philips Hue Smart Bulb Starter Kit', stock: 30 },
-  { name: 'Sonos Era 100 Smart Speaker', stock: 18 },
-  { name: 'ASUS ROG Rapture WiFi 6E Router', stock: 9 },
-  { name: 'Logitech Brio 4K Webcam', stock: 22 },
-  { name: 'Elgato Cam Link 4K', stock: 14 }
+  // --- Accessories ---
+  { id: 15, name: 'Top-Grain Leather Travel Backpack', category: 'Accessories', price: 180, stock: 25, detail: 'Full-grain vintage cowhide with padded laptop sleeve', icon: 'backpack', tint: 'sand', tag: 'POPULAR', rating: 4.8 },
+  { id: 16, name: 'Polarized Aviator Sunglasses', category: 'Accessories', price: 150, stock: 30, detail: 'Handmade acetate frame with UV400 polarized optics', icon: 'glasses', tint: 'blue', rating: 4.7 },
+  { id: 17, name: 'Minimalist RFID Slim Leather Wallet', category: 'Accessories', price: 45, stock: 75, detail: 'Bifold vegetable-tanned leather with quick card eject', icon: 'wallet', tint: 'mint', rating: 4.9 },
+  { id: 18, name: 'Stainless Steel Chronograph Watch', category: 'Accessories', price: 260, stock: 22, detail: 'Sapphire crystal face with Japanese quartz movement', icon: 'watch', tint: 'peach', rating: 4.8 },
+  { id: 19, name: 'Luxury Swiss Automatic Chronometer', category: 'Accessories', price: 1350, stock: 5, detail: 'Certified chronometer with 18k gold accents · Exceeds $1,000 limit', icon: 'watch', tint: 'lilac', tag: 'OVER $1K (DEMO SAGA)', rating: 5.0 },
 ];
 
 const mockOrders = [
   { productId: 1, quantity: 1, amount: 399.00, status: 'COMPLETED' },
-  { productId: 2, quantity: 2, amount: 198.00, status: 'COMPLETED' },
-  { productId: 6, quantity: 1, amount: 1299.00, status: 'CANCELLED' }, // Exceeds 1000 threshold
-  { productId: 3, quantity: 1, amount: 99.00, status: 'COMPLETED' },
-  { productId: 4, quantity: 1, amount: 650.00, status: 'COMPLETED' },
-  { productId: 8, quantity: 1, amount: 1499.00, status: 'CANCELLED' }, // Exceeds 1000 threshold
-  { productId: 5, quantity: 3, amount: 297.00, status: 'COMPLETED' },
-  { productId: 7, quantity: 2, amount: 220.00, status: 'COMPLETED' },
+  { productId: 10, quantity: 1, amount: 120.00, status: 'COMPLETED' },
+  { productId: 6, quantity: 1, amount: 1299.00, status: 'CANCELLED' }, // Exceeds $1,000 threshold
+  { productId: 4, quantity: 1, amount: 99.00, status: 'COMPLETED' },
+  { productId: 15, quantity: 1, amount: 180.00, status: 'COMPLETED' },
+  { productId: 14, quantity: 1, amount: 1150.00, status: 'CANCELLED' }, // Exceeds $1,000 threshold
+  { productId: 11, quantity: 2, amount: 150.00, status: 'COMPLETED' },
+  { productId: 17, quantity: 1, amount: 45.00, status: 'COMPLETED' },
 ];
 
 async function seedData() {
@@ -115,17 +98,24 @@ async function seedData() {
     await inventoryPool.query(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
+        name VARCHAR(120) NOT NULL,
+        category VARCHAR(50) NOT NULL DEFAULT 'Electronics',
+        price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
         stock INT NOT NULL,
-        reserved_stock INT DEFAULT 0
+        reserved_stock INT DEFAULT 0,
+        detail VARCHAR(255) DEFAULT '',
+        icon VARCHAR(50) DEFAULT 'box',
+        tint VARCHAR(50) DEFAULT 'lilac',
+        tag VARCHAR(50) DEFAULT '',
+        rating NUMERIC(3, 1) DEFAULT 4.8
       );
       TRUNCATE TABLE products RESTART IDENTITY;
     `);
 
     for (const prod of products) {
       await inventoryPool.query(
-        'INSERT INTO products (name, stock, reserved_stock) VALUES ($1, $2, 0)',
-        [prod.name, prod.stock]
+        'INSERT INTO products (name, category, price, stock, reserved_stock, detail, icon, tint, tag, rating) VALUES ($1, $2, $3, $4, 0, $5, $6, $7, $8, $9)',
+        [prod.name, prod.category, prod.price, prod.stock, prod.detail, prod.icon, prod.tint, prod.tag, prod.rating]
       );
     }
 
