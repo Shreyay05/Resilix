@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Resilix Distributed Saga Pattern with Inventory, Payment, and Order Microservices + React Storefront",
   "scripts": {
+    "setup": "npm --prefix inventory-service install && npm --prefix payment-service install && npm --prefix order-service install && npm --prefix client install",
     "start:inventory": "node inventory-service/index.js",
     "start:payment": "node payment-service/index.js",
     "start:order": "node order-service/index.js",
