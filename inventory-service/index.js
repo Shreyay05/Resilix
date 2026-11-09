@@ -1,6 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+// Auto-load root .env if present
+const rootEnv = path.resolve(__dirname, '../.env');
+if (fs.existsSync(rootEnv)) {
+  fs.readFileSync(rootEnv, 'utf8').split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const [k, ...v] = trimmed.split('=');
+      const key = k.trim();
+      if (!process.env[key]) process.env[key] = v.join('=').trim();
+    }
+  });
+}
 
 const app = express();
 app.use(cors());
@@ -30,9 +45,9 @@ const inMemoryProducts = defaultProducts.map(p => ({ ...p }));
 // Database connection configuration (supports Docker Compose, local Postgres, or custom env)
 const db = new Pool({
   host: process.env.DB_HOST || '127.0.0.1',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  user: process.env.DB_USER || 'user',
-  password: process.env.DB_PASSWORD || 'password',
+  port: parseInt(process.env.INVENTORY_DB_PORT || process.env.DB_PORT || '5432', 10),
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'Shreya123',
   database: process.env.DB_NAME || 'inventory_db',
   connectionTimeoutMillis: 2000,
 });

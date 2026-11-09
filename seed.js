@@ -1,14 +1,28 @@
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+// Auto-load root .env if present
+const rootEnv = path.resolve(__dirname, '.env');
+if (fs.existsSync(rootEnv)) {
+  fs.readFileSync(rootEnv, 'utf8').split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const [k, ...v] = trimmed.split('=');
+      const key = k.trim();
+      if (!process.env[key]) process.env[key] = v.join('=').trim();
+    }
+  });
+}
 
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
-const DB_USER = process.env.DB_USER || (process.env.DOCKER === 'false' ? 'postgres' : 'user');
-const DB_PASSWORD = process.env.DB_PASSWORD || (process.env.DOCKER === 'false' ? 'Shreya123' : 'password');
+const DB_USER = process.env.DB_USER || 'postgres';
+const DB_PASSWORD = process.env.DB_PASSWORD || 'Shreya123';
 
-// In Docker Compose: order-db is port 5431, inventory-db is 5432, payment-db is 5433.
-// In single local PostgreSQL instance: all databases are typically on port 5432.
+// Defaults to 5432 (standard local PostgreSQL) or Docker ports if specified
 const INVENTORY_PORT = parseInt(process.env.INVENTORY_DB_PORT || process.env.DB_PORT || '5432', 10);
-const ORDER_PORT = parseInt(process.env.ORDER_DB_PORT || process.env.DB_PORT || '5431', 10);
-const PAYMENT_PORT = parseInt(process.env.PAYMENT_DB_PORT || process.env.DB_PORT || '5433', 10);
+const ORDER_PORT = parseInt(process.env.ORDER_DB_PORT || process.env.DB_PORT || '5432', 10);
+const PAYMENT_PORT = parseInt(process.env.PAYMENT_DB_PORT || process.env.DB_PORT || '5432', 10);
 
 const inventoryPool = new Pool({
   host: DB_HOST,

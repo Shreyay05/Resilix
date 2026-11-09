@@ -1,6 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+// Auto-load root .env if present
+const rootEnv = path.resolve(__dirname, '../.env');
+if (fs.existsSync(rootEnv)) {
+  fs.readFileSync(rootEnv, 'utf8').split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const [k, ...v] = trimmed.split('=');
+      const key = k.trim();
+      if (!process.env[key]) process.env[key] = v.join('=').trim();
+    }
+  });
+}
 
 const app = express();
 app.use(cors());
@@ -11,13 +26,12 @@ const PORT = process.env.PORT || 5003;
 let useInMemory = false;
 const inMemoryPayments = [];
 
-// In docker-compose, payment-db is mapped to host port 5433.
-// If using single local PostgreSQL instance, DB_PORT can be set to 5432.
+// Defaults to port 5432 (local Postgres) or custom port/env
 const db = new Pool({
   host: process.env.DB_HOST || '127.0.0.1',
-  port: parseInt(process.env.DB_PORT || '5433', 10),
-  user: process.env.DB_USER || 'user',
-  password: process.env.DB_PASSWORD || 'password',
+  port: parseInt(process.env.PAYMENT_DB_PORT || process.env.DB_PORT || '5432', 10),
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'Shreya123',
   database: process.env.DB_NAME || 'payments_db',
   connectionTimeoutMillis: 2000,
 });
