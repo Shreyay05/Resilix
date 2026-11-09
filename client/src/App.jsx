@@ -4,7 +4,7 @@ import {
   Plus, Minus, X, Check, PackageCheck, ShieldCheck, Truck, Headphones,
   Laptop, Keyboard, Mouse, Monitor, BatteryCharging, Gamepad2, Speaker,
   HardDrive, Sparkles, CircleCheck, CircleX, RotateCcw, Menu, SlidersHorizontal,
-  AudioLines, Zap, Box, CreditCard, ChevronRight, User, Shield, Lock, RefreshCw
+  AudioLines, Zap, Box, CreditCard, ChevronRight, User, Shield, Lock, RefreshCw, LogOut
 } from 'lucide-react'
 import { products as localProducts, categories } from './data/products'
 import { placeOrder, fetchInventory, adjustInventoryStock, fetchAllOrders } from './api/client'
@@ -16,9 +16,10 @@ const visual = {
   monitor: 'monitor', laptop: 'laptop', ssd: 'ssd', battery: 'battery', gamepad: 'gamepad', vr: 'vr', speaker: 'speaker'
 }
 
+// Preset Client-Side Accounts (Zero Database Storage)
 const DEMO_USERS = {
   customer: { id: 'cust_1', name: 'John Doe', email: 'customer@resilix.com', role: 'customer' },
-  admin: { id: 'admin_1', name: 'Sarah Connor', email: 'admin@resilix.com', role: 'admin' }
+  admin: { id: 'admin_1', name: 'Admin Manager', email: 'admin@resilix.com', role: 'admin' }
 }
 
 function ProductArt({ product, large = false }) {
@@ -30,14 +31,161 @@ function ProductArt({ product, large = false }) {
   </div>
 }
 
-function App() {
-  // Authentication & RBAC state
-  const [currentUser, setCurrentUser] = useState(DEMO_USERS.customer)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [authEmail, setAuthEmail] = useState('')
-  const [authPassword, setAuthPassword] = useState('')
+/* =========================================================
+   DEDICATED FULL-PAGE LOGIN VIEW (NO DATABASE REQUIRED)
+========================================================= */
+function LoginPage({ onLogin }) {
+  const [selectedRole, setSelectedRole] = useState('customer') // 'customer' | 'admin'
+  const [identifier, setIdentifier] = useState('customer@resilix.com')
+  const [password, setPassword] = useState('customer123')
+  const [errorMsg, setErrorMsg] = useState('')
 
-  // Shop state
+  // Handle Tab Switch
+  const handleRoleTab = (role) => {
+    setSelectedRole(role)
+    setErrorMsg('')
+    if (role === 'customer') {
+      setIdentifier('customer@resilix.com')
+      setPassword('customer123')
+    } else {
+      setIdentifier('admin@resilix.com')
+      setPassword('admin123')
+    }
+  }
+
+  // Handle Form Submit
+  const handleFormSubmit = (e) => {
+    e.preventDefault()
+    setErrorMsg('')
+
+    if (selectedRole === 'admin') {
+      // Admin credential check (client-side demo)
+      if (identifier.toLowerCase().includes('admin') || password === 'admin123') {
+        onLogin(DEMO_USERS.admin)
+      } else {
+        setErrorMsg('Invalid admin credentials. Use admin@resilix.com / admin123')
+      }
+    } else {
+      // Customer login (any valid input or preset)
+      const user = {
+        id: `cust_${Date.now()}`,
+        name: identifier.split('@')[0] || 'Customer',
+        email: identifier,
+        role: 'customer'
+      }
+      onLogin(user)
+    }
+  }
+
+  return (
+    <div className="login-page-screen">
+      <div className="login-card-container">
+        {/* Brand Header */}
+        <div className="login-brand-header">
+          <div className="brand-mark">
+            <Zap size={24} fill="currentColor" />
+          </div>
+          <h1>resilix<span className="brand-dot">.</span></h1>
+          <p>Sign in to your Resilix Portal</p>
+        </div>
+
+        {/* Role Tabs */}
+        <div className="role-tab-selector">
+          <button
+            type="button"
+            className={`role-tab-btn ${selectedRole === 'customer' ? 'active' : ''}`}
+            onClick={() => handleRoleTab('customer')}
+          >
+            <User size={14} />
+            Customer Portal
+          </button>
+          <button
+            type="button"
+            className={`role-tab-btn ${selectedRole === 'admin' ? 'active' : ''}`}
+            onClick={() => handleRoleTab('admin')}
+          >
+            <Shield size={14} />
+            Admin Portal
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div style={{ background: '#fdf0ee', color: '#b03426', padding: '10px 14px', borderRadius: '7px', fontSize: '11px', marginBottom: '16px' }}>
+            {errorMsg}
+          </div>
+        )}
+
+        {/* Credentials Form */}
+        <form onSubmit={handleFormSubmit} className="login-form-fields">
+          <div className="form-input-group">
+            <label>{selectedRole === 'admin' ? 'Admin Email / Username' : 'Customer Email / Username'}</label>
+            <input
+              type="text"
+              value={identifier}
+              onChange={e => setIdentifier(e.target.value)}
+              placeholder={selectedRole === 'admin' ? 'admin@resilix.com' : 'you@example.com'}
+              required
+            />
+          </div>
+
+          <div className="form-input-group">
+            <label>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          <button type="submit" className="login-submit-btn">
+            {selectedRole === 'admin' ? <Shield size={15} /> : <User size={15} />}
+            Enter as {selectedRole === 'admin' ? 'Administrator' : 'Customer'} <ArrowRight size={15} />
+          </button>
+        </form>
+
+        {/* Quick 1-Click Login Buttons */}
+        <div className="quick-login-divider">
+          <span>Or Quick 1-Click Access</span>
+        </div>
+
+        <div className="quick-login-actions">
+          <button
+            type="button"
+            className="quick-login-btn"
+            onClick={() => onLogin(DEMO_USERS.customer)}
+          >
+            <User size={13} color="#244b39" />
+            Quick Customer
+          </button>
+          <button
+            type="button"
+            className="quick-login-btn"
+            onClick={() => onLogin(DEMO_USERS.admin)}
+          >
+            <Shield size={13} color="#244b39" />
+            Quick Admin
+          </button>
+        </div>
+
+        {/* Note indicating no database used */}
+        <div className="demo-credentials-note">
+          <strong>Client-Side Demo Auth:</strong> Credentials are verified in memory with no database storage required.
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* =========================================================
+   MAIN APPLICATION
+========================================================= */
+function App() {
+  // Session Authentication State (starts on Login Page)
+  const [currentUser, setCurrentUser] = useState(null)
+
+  // Shop State
   const [category, setCategory] = useState('All products')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('featured')
@@ -48,13 +196,13 @@ function App() {
   const [toast, setToast] = useState('')
   const [mobileMenu, setMobileMenu] = useState(false)
   const [email, setEmail] = useState('')
-  const [fullName, setFullName] = useState(currentUser.name)
+  const [fullName, setFullName] = useState('')
   const [address, setAddress] = useState('')
   const [placing, setPlacing] = useState(false)
   const [page, setPage] = useState('shop') // 'shop' | 'inventory' (admin) | 'admin-orders' (admin) | 'receipt' (customer)
   const [showWishlist, setShowWishlist] = useState(false)
 
-  // Orders state
+  // Orders State
   const [orders, setOrders] = useState([])
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [customerLastReceipt, setCustomerLastReceipt] = useState(null)
@@ -67,30 +215,28 @@ function App() {
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(''), 2800) }
 
-  // Sync user name with checkout
+  // Sync current user details with checkout
   useEffect(() => {
-    setFullName(currentUser.name)
-    setEmail(currentUser.email)
+    if (currentUser) {
+      setFullName(currentUser.name)
+      setEmail(currentUser.email)
+    }
   }, [currentUser])
 
   // Load Admin Data when on Admin pages
   const refreshAdminData = async () => {
-    if (currentUser.role !== 'admin') return
+    if (!currentUser || currentUser.role !== 'admin') return
     setLoadingInventory(true)
     setLoadingOrders(true)
     const [inv, ords] = await Promise.all([fetchInventory(), fetchAllOrders()])
-    if (inv && Array.isArray(inv)) {
-      setLiveInventory(inv)
-    }
-    if (ords && Array.isArray(ords)) {
-      setAdminOrders(ords)
-    }
+    if (inv && Array.isArray(inv)) setLiveInventory(inv)
+    if (ords && Array.isArray(ords)) setAdminOrders(ords)
     setLoadingInventory(false)
     setLoadingOrders(false)
   }
 
   useEffect(() => {
-    if (currentUser.role === 'admin' && (page === 'inventory' || page === 'admin-orders')) {
+    if (currentUser?.role === 'admin' && (page === 'inventory' || page === 'admin-orders')) {
       refreshAdminData()
     }
   }, [page, currentUser])
@@ -159,7 +305,7 @@ function App() {
       setCart([])
 
       // Customer sees receipt only, admin can see full saga orders
-      if (currentUser.role === 'admin') {
+      if (currentUser?.role === 'admin') {
         setSelectedOrder(orderRecord)
         setPage('admin-orders')
       } else {
@@ -184,27 +330,33 @@ function App() {
     }
   }
 
-  // Switch role logic
-  function switchRole(roleKey) {
-    const selected = DEMO_USERS[roleKey] || DEMO_USERS.customer
-    setCurrentUser(selected)
-    setShowAuthModal(false)
-    if (selected.role === 'customer' && (page === 'inventory' || page === 'admin-orders')) {
-      setPage('shop')
-    }
-    notify(`Logged in as ${selected.role.toUpperCase()} (${selected.name})`)
+  // Logout Function
+  const handleLogout = () => {
+    setCurrentUser(null)
+    setPage('shop')
+    setCart([])
+    notify('Logged out successfully.')
   }
 
   const goShop = () => { setPage('shop'); setShowWishlist(false); setCategory('All products') }
   const goCategory = c => { setPage('shop'); setShowWishlist(false); setCategory(c); setMobileMenu(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
+  // IF NOT LOGGED IN -> RENDER DEDICATED LOGIN PAGE
+  if (!currentUser) {
+    return <LoginPage onLogin={(user) => {
+      setCurrentUser(user)
+      notify(`Welcome, ${user.name}! Logged in as ${user.role.toUpperCase()}.`)
+    }} />
+  }
+
+  // NORMAL RESILIX PAGE (ROLE-BASED VIEWS)
   return <div className="app-shell">
     {/* Announcement bar */}
     <div className="announcement">
       <Sparkles size={13} />
       <span>Saga Pattern Microservices Demo · Payment Threshold: <strong>₹10,000</strong></span>
       <span>·</span>
-      <span>Active Role: <strong style={{ textTransform: 'uppercase' }}>{currentUser.role}</strong></span>
+      <span>Logged in as: <strong style={{ textTransform: 'uppercase' }}>{currentUser.role}</strong> ({currentUser.name})</span>
     </div>
 
     {/* Top navigation header */}
@@ -262,14 +414,15 @@ function App() {
           <kbd>⌘ K</kbd>
         </label>
 
-        {/* User Role Trigger Button */}
-        <button className="role-trigger" onClick={() => setShowAuthModal(true)} title="Click to switch role or login">
-          <span className={`role-pill ${currentUser.role}`}>
-            {currentUser.role === 'admin' ? <Shield size={11} /> : <User size={11} />}
-            {currentUser.role}
-          </span>
-          <span className="user-name-text">{currentUser.name}</span>
-          <ChevronDown size={13} />
+        {/* Current User Badge & Logout */}
+        <span className={`role-pill ${currentUser.role}`} style={{ padding: '6px 10px', fontSize: '10px' }}>
+          {currentUser.role === 'admin' ? <Shield size={12} /> : <User size={12} />}
+          {currentUser.role.toUpperCase()}
+        </span>
+
+        <button className="logout-btn" onClick={handleLogout} title="Sign out and return to Login Page">
+          <LogOut size={13} />
+          <span>Logout</span>
         </button>
 
         <button className={`icon-button ${showWishlist ? 'active' : ''}`} onClick={() => { setShowWishlist(!showWishlist); setPage('shop'); setCategory('All products'); }} aria-label="Wishlist">
@@ -459,7 +612,7 @@ function App() {
           <Lock size={38} color="#b03426" />
           <h3>Access Denied</h3>
           <p>You are logged in as <strong>Customer</strong>. Customers are not authorized to view raw inventory management counters or warehouse stock levels.</p>
-          <button className="primary-button" onClick={() => setShowAuthModal(true)}>Log in as Admin</button>
+          <button className="primary-button" onClick={handleLogout}>Log out &amp; Sign in as Admin</button>
         </div>
       )
     )}
@@ -541,7 +694,7 @@ function App() {
           <Lock size={38} color="#b03426" />
           <h3>Access Denied</h3>
           <p>You are logged in as <strong>Customer</strong>. Customers cannot view system-wide order logs, audit details, or internal Saga orchestration state.</p>
-          <button className="primary-button" onClick={() => setShowAuthModal(true)}>Log in as Admin</button>
+          <button className="primary-button" onClick={handleLogout}>Log out &amp; Sign in as Admin</button>
         </div>
       )
     )}
@@ -608,68 +761,6 @@ function App() {
           </div>
         )}
       </main>
-    )}
-
-    {/* ================= MODAL: ROLE-BASED LOGIN & SWITCHER ================= */}
-    {showAuthModal && (
-      <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setShowAuthModal(false)}>
-        <div className="auth-modal">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-            <span className="eyebrow"><Shield size={12} /> RESILIX RBAC AUTHENTICATION</span>
-            <button className="icon-button" onClick={() => setShowAuthModal(false)}><X size={17} /></button>
-          </div>
-
-          <div className="auth-header">
-            <h2>Select Your User Role</h2>
-            <p>Switch between Customer and Admin to test Role-Based Access Control.</p>
-          </div>
-
-          {/* Role selector cards */}
-          <div className="role-cards-grid">
-            {/* CUSTOMER CARD */}
-            <div
-              className={`role-select-card ${currentUser.role === 'customer' ? 'active' : ''}`}
-              onClick={() => switchRole('customer')}
-            >
-              <div className="role-card-badge">
-                <span className="role-pill customer"><User size={10} /> Customer</span>
-                {currentUser.role === 'customer' && <Check size={14} color="#244b39" />}
-              </div>
-              <h4>Customer View</h4>
-              <p>Browse storefront, manage cart, place orders, and receive order receipts.</p>
-              <div className="role-permissions-list">
-                <span><Check size={11} color="#3d7042" /> Storefront &amp; Cart</span>
-                <span><Check size={11} color="#3d7042" /> Checkout &amp; Receipts</span>
-                <span><X size={11} color="#b03426" /> Inventory Management (Hidden)</span>
-                <span><X size={11} color="#b03426" /> Order Details / Saga Trace (Hidden)</span>
-              </div>
-            </div>
-
-            {/* ADMIN CARD */}
-            <div
-              className={`role-select-card ${currentUser.role === 'admin' ? 'active' : ''}`}
-              onClick={() => switchRole('admin')}
-            >
-              <div className="role-card-badge">
-                <span className="role-pill admin"><Shield size={10} /> Administrator</span>
-                {currentUser.role === 'admin' && <Check size={14} color="#244b39" />}
-              </div>
-              <h4>Administrator View</h4>
-              <p>Full system access to live inventory counts, restock tools, and Saga order logs.</p>
-              <div className="role-permissions-list">
-                <span><Check size={11} color="#3d7042" /> Live Inventory Management</span>
-                <span><Check size={11} color="#3d7042" /> Stock Replenishment Controls</span>
-                <span><Check size={11} color="#3d7042" /> All Customer Order Details</span>
-                <span><Check size={11} color="#3d7042" /> Distributed Saga Execution Traces</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ textAlign: 'center', fontSize: '11px', color: '#7a8175', borderTop: '1px solid #edf0ea', paddingTop: '15px' }}>
-            <span>Currently signed in as: <strong>{currentUser.name}</strong> ({currentUser.email})</span>
-          </div>
-        </div>
-      </div>
     )}
 
     {/* ================= MODAL: ADMIN SAGA INSPECTOR ================= */}
@@ -827,8 +918,9 @@ function App() {
       </div>
       <div className="footer-links">
         <span>CURRENT SESSION</span>
-        <button onClick={() => setShowAuthModal(true)}>Role: {currentUser.role.toUpperCase()}</button>
-        <button onClick={() => setShowAuthModal(true)}>User: {currentUser.name}</button>
+        <button onClick={handleLogout}>Role: {currentUser.role.toUpperCase()}</button>
+        <button onClick={handleLogout}>User: {currentUser.name}</button>
+        <button onClick={handleLogout} style={{ color: '#a03525', fontWeight: 700 }}>Log Out</button>
       </div>
       <div className="footer-links">
         <span>MICROSERVICES</span>
