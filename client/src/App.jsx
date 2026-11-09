@@ -7,9 +7,9 @@ import {
   Watch, Pill, Stethoscope, ShoppingBasket, Sofa, Glasses, Briefcase, RotateCcw,
   ShieldCheck, Truck, User, Shield, Lock, RefreshCw, LogOut, CreditCard, Check
 } from 'lucide-react'
-import { placeOrder, fetchInventory, adjustInventoryStock, fetchAllOrders } from './api/client'
+import { placeOrder, adjustInventoryStock, fetchAllOrders } from './api/client'
 
-const INVENTORY_SERVICE = 'http://localhost:5002'
+const INVENTORY_SERVICE = 'http://localhost:5002';
 
 // Prices are shown in US Dollars ($)
 const CURRENCY = 'USD'
@@ -58,7 +58,7 @@ function pickIcon(name = '', category = '') {
 function ProductArt({ product, large = false }) {
   const iconKey = product.icon || pickIcon(product.name, product.category)
   const Icon = iconMap[iconKey] || Box
-  return <div className={`product-art ${product.tint || 'lilac'} ${large ? 'large' : ''} art-${iconKey}`}>
+  return <div className={`product-art ${product.tint || 'lilac'} ${large ? 'large' : ''} art-${iconKey || 'box'}`}>
     <div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" />
     <div className="art-icon"><Icon strokeWidth={1.15} /></div>
     <span className="art-glint">✳</span>
@@ -72,7 +72,7 @@ const DEMO_USERS = {
 }
 
 /* =========================================================
-   DEDICATED FULL-PAGE LOGIN VIEW (NO DATABASE REQUIRED)
+   DEDICATED FULL-PAGE LOGIN VIEW (USES EXACT STYLES.CSS)
 ========================================================= */
 function LoginPage({ onLogin }) {
   const [selectedRole, setSelectedRole] = useState('customer')
@@ -109,20 +109,20 @@ function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="login-screen-wrapper">
-      <div className="login-card-box">
+    <div className="login-page-screen">
+      <div className="login-card-container">
         <div className="login-brand-header">
-          <div className="login-brand-icon">
-            <Zap size={26} fill="currentColor" />
+          <div className="brand-mark">
+            <Zap size={24} fill="currentColor" />
           </div>
-          <h1>resilix<span>.</span></h1>
+          <h1>resilix<span className="brand-dot">.</span></h1>
           <p>Distributed Saga E-Commerce Architecture</p>
         </div>
 
-        <div className="role-segmented-control">
+        <div className="role-tab-selector">
           <button
             type="button"
-            className={`role-seg-btn ${selectedRole === 'customer' ? 'active' : ''}`}
+            className={`role-tab-btn ${selectedRole === 'customer' ? 'active' : ''}`}
             onClick={() => handleRoleTab('customer')}
           >
             <User size={14} />
@@ -130,7 +130,7 @@ function LoginPage({ onLogin }) {
           </button>
           <button
             type="button"
-            className={`role-seg-btn ${selectedRole === 'admin' ? 'active' : ''}`}
+            className={`role-tab-btn ${selectedRole === 'admin' ? 'active' : ''}`}
             onClick={() => handleRoleTab('admin')}
           >
             <Shield size={14} />
@@ -138,9 +138,9 @@ function LoginPage({ onLogin }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form-inner">
-          <label>
-            <span>{selectedRole === 'admin' ? 'Admin ID / Email' : 'Email Address'}</span>
+        <form onSubmit={handleSubmit} className="login-form-fields">
+          <div className="form-input-group">
+            <label>{selectedRole === 'admin' ? 'Admin ID / Email' : 'Email Address'}</label>
             <input
               type="text"
               value={identifier}
@@ -148,21 +148,21 @@ function LoginPage({ onLogin }) {
               placeholder={selectedRole === 'admin' ? 'admin@resilix.com' : 'customer@resilix.com'}
               required
             />
-          </label>
+          </div>
 
-          <label>
-            <span>Password</span>
+          <div className="form-input-group">
+            <label>Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-          </label>
+          </div>
 
           {errorMsg && (
-            <div className="login-error-msg">
-              <CircleX size={14} />
+            <div style={{ color: '#b03426', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <CircleX size={13} />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -173,7 +173,7 @@ function LoginPage({ onLogin }) {
           </button>
         </form>
 
-        <div className="quick-access-separator">
+        <div className="quick-login-divider">
           <span>Or Quick 1-Click Access</span>
         </div>
 
@@ -210,79 +210,65 @@ function LoginPage({ onLogin }) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null)
 
-  // Products & Categories (Dynamically fetched from DB/Inventory Service)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('All products')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('featured')
-
-  // Shopping & UI state
   const [cart, setCart] = useState([])
   const [wishlist, setWishlist] = useState([])
   const [drawer, setDrawer] = useState(false)
   const [checkout, setCheckout] = useState(false)
   const [orders, setOrders] = useState([])
   const [selectedOrder, setSelectedOrder] = useState(null)
-  const [customerLastReceipt, setCustomerLastReceipt] = useState(null)
   const [toast, setToast] = useState('')
   const [mobileMenu, setMobileMenu] = useState(false)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [address, setAddress] = useState('')
   const [placing, setPlacing] = useState(false)
-  const [page, setPage] = useState('shop') // 'shop' | 'inventory' | 'admin-orders' | 'receipt'
+  const [page, setPage] = useState('shop') // 'shop' | 'orders' | 'inventory' | 'admin-orders' | 'receipt'
   const [showWishlist, setShowWishlist] = useState(false)
 
-  // Admin live audit state
+  // Admin Live State
   const [adminOrders, setAdminOrders] = useState([])
   const [loadingAdminData, setLoadingAdminData] = useState(false)
 
-  const notify = msg => { setToast(msg); setTimeout(() => setToast(''), 2800) }
-
-  // Sync current user details with checkout inputs
-  useEffect(() => {
-    if (currentUser) {
-      setFullName(currentUser.name)
-      setEmail(currentUser.email)
-    }
-  }, [currentUser])
-
   // Fetch live products from Inventory Service (Port 5002) - Matches DB contents
-  const loadProducts = async () => {
-    try {
-      const res = await fetch(`${INVENTORY_SERVICE}/products`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      const tints = ['lilac', 'sand', 'blue', 'mint', 'peach']
-      const formatted = data.map((p, idx) => {
-        const price = Number(p.price) || 0
-        const cat = (p.category || 'General').trim()
-        const available = p.available ?? Math.max(0, p.stock - (p.reserved_stock || 0))
-        return {
-          id: p.id,
-          name: p.name,
-          price,
-          category: cat,
-          stock: available,
-          total_stock: p.stock,
-          reserved_stock: p.reserved_stock || 0,
-          rating: p.rating ? Number(p.rating).toFixed(1) : (4.5 + (p.id % 5) * 0.1).toFixed(1),
-          detail: p.detail || `${cat} - ${p.name}`,
-          icon: p.icon || pickIcon(p.name, cat),
-          tag: p.tag || (price > PAYMENT_THRESHOLD ? `OVER $1K (DEMO SAGA)` : ''),
-          tint: p.tint || tints[idx % tints.length]
-        }
+  const loadProducts = () => {
+    return fetch(`${INVENTORY_SERVICE}/products`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
       })
-      setProducts(formatted)
-    } catch (err) {
-      console.warn('Could not fetch live inventory products from 5002:', err.message)
-    } finally {
-      setLoading(false)
-    }
+      .then(data => {
+        const tints = ['lilac', 'sand', 'blue', 'mint', 'peach']
+        const formatted = data.map((p, idx) => {
+          const price = Number(p.price) || 0
+          const cat = (p.category || 'General').trim()
+          const available = p.available ?? Math.max(0, p.stock - (p.reserved_stock || 0))
+          return {
+            id: p.id,
+            name: p.name,
+            price,
+            category: cat,
+            stock: available,
+            total_stock: p.stock,
+            reserved_stock: p.reserved_stock || 0,
+            rating: p.rating ? Number(p.rating).toFixed(1) : (4.5 + (p.id % 5) * 0.1).toFixed(1),
+            detail: p.detail || `${cat} - ${p.name}`,
+            icon: p.icon || pickIcon(p.name, cat),
+            tag: p.tag || (price > PAYMENT_THRESHOLD ? 'OVER $1K (DEMO SAGA)' : ''),
+            tint: p.tint || tints[idx % tints.length]
+          }
+        })
+        setProducts(formatted)
+      })
+      .catch(err => console.error('Error fetching inventory products:', err))
+      .finally(() => setLoading(false))
   }
 
-  // Load Admin Data (all system orders & inventory)
+  // Load Admin Data when on Admin pages
   const refreshAdminData = async () => {
     if (!currentUser || currentUser.role !== 'admin') return
     setLoadingAdminData(true)
@@ -291,7 +277,15 @@ export default function App() {
     setLoadingAdminData(false)
   }
 
-  // Boot & background polling to keep UI aligned with DB
+  // Sync user details into checkout form
+  useEffect(() => {
+    if (currentUser) {
+      setFullName(currentUser.name)
+      setEmail(currentUser.email)
+    }
+  }, [currentUser])
+
+  // Periodic poll to keep UI in sync with DB
   useEffect(() => {
     loadProducts()
     const timer = setInterval(loadProducts, 10000)
@@ -304,7 +298,7 @@ export default function App() {
     }
   }, [page, currentUser])
 
-  // Dynamically extract categories from database products
+  // Dynamically extract categories from products
   const categories = useMemo(() => {
     const cats = [...new Set(products.map(p => p.category))].filter(Boolean)
     return ['All products', ...cats]
@@ -324,6 +318,7 @@ export default function App() {
   const subtotal = cart.reduce((n, item) => n + item.price * item.quantity, 0)
   const shipping = subtotal >= FREE_SHIPPING_OVER ? 0 : 8
   const total = subtotal + shipping
+  const notify = msg => { setToast(msg); setTimeout(() => setToast(''), 2600) }
 
   const addToCart = p => {
     setCart(old => {
@@ -337,7 +332,7 @@ export default function App() {
   const toggleWish = id => setWishlist(old => old.includes(id) ? old.filter(x => x !== id) : [...old, id])
   const beginCheckout = () => { if (!cart.length) return; setDrawer(false); setCheckout(true) }
 
-  // Admin Restock Action
+  // Admin Restocking
   async function handleRestock(productId, amount = 10) {
     try {
       await adjustInventoryStock(productId, amount)
@@ -357,12 +352,11 @@ export default function App() {
     notify('Logged out successfully.')
   }
 
-  // Submit Order via Distributed Saga Orchestrator
+  // Place Order via Saga Orchestrator
   async function submitOrder(e) {
     e.preventDefault()
     if (!fullName.trim() || !email.trim() || !address.trim()) return
     setPlacing(true)
-
     try {
       const results = []
       for (const item of cart) {
@@ -373,10 +367,9 @@ export default function App() {
           customer: fullName
         }))
       }
-
       const failed = results.find(r => r.status === 'FAILED' || r.status === 'failed')
       const result = failed || results[0]
-      const orderRecord = {
+      const order = {
         ...result,
         customer: fullName,
         email,
@@ -387,22 +380,20 @@ export default function App() {
         status: failed ? 'CANCELLED' : 'COMPLETED',
         steps: result.steps || []
       }
-
-      setOrders(old => [orderRecord, ...old])
-      setCustomerLastReceipt(orderRecord)
+      setOrders(old => [order, ...old])
+      setSelectedOrder(order)
       setCheckout(false)
       setCart([])
 
-      // Customer sees receipt; Admin can inspect full saga trace
+      // Customer sees receipt; Admin sees order audit
       if (currentUser?.role === 'admin') {
-        setSelectedOrder(orderRecord)
         setPage('admin-orders')
       } else {
         setPage('receipt')
       }
       notify(failed ? 'Order cancelled: Payment declined (exceeds $1,000.00 threshold).' : 'Order placed successfully!')
     } catch (err) {
-      notify('Could not place order. Please check backend connection.')
+      notify('Could not place the demo order. Please try again.')
     } finally {
       setPlacing(false)
       loadProducts()
@@ -412,7 +403,7 @@ export default function App() {
   const goShop = () => { setPage('shop'); setShowWishlist(false); setCategory('All products') }
   const goCategory = c => { setPage('shop'); setShowWishlist(false); setCategory(c); setMobileMenu(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
-  // IF NOT LOGGED IN -> RENDER DEDICATED FULL-PAGE LOGIN
+  // IF NOT LOGGED IN -> RENDER DEDICATED FULL LOGIN PAGE
   if (!currentUser) {
     return <LoginPage onLogin={(user) => {
       setCurrentUser(user)
@@ -425,17 +416,13 @@ export default function App() {
   }
 
   return <div className="app-shell">
-    {/* Announcement bar */}
+    {/* Announcement bar matching database live status */}
     <div className="announcement">
       <Sparkles size={13} />
-      <span>Saga Pattern Microservices Demo · Payment Threshold: <strong>$1,000.00</strong></span>
-      <span>·</span>
-      <span>Free shipping over {money(FREE_SHIPPING_OVER)}</span>
-      <span>·</span>
-      <span>Logged in as: <strong style={{ textTransform: 'uppercase' }}>{currentUser.role}</strong> ({currentUser.name})</span>
+      Multi-Category Catalog Live <span>·</span> Threshold: <strong>$1,000.00</strong> <span>·</span> Free shipping over {money(FREE_SHIPPING_OVER)} <span>·</span> Logged in as: <strong style={{ textTransform: 'uppercase' }}>{currentUser.role}</strong>
     </div>
 
-    {/* Topbar navigation header */}
+    {/* Header */}
     <header className="topbar">
       <button className="mobile-menu icon-button" onClick={() => setMobileMenu(!mobileMenu)} aria-label="Open menu"><Menu /></button>
       <button className="brand" onClick={goShop} aria-label="Resilix home">
@@ -443,11 +430,9 @@ export default function App() {
         <span>resilix<span className="brand-dot">.</span></span>
       </button>
 
-      {/* Role-based navigation links */}
+      {/* Navigation links */}
       <nav className={mobileMenu ? 'nav-links open' : 'nav-links'}>
-        <button className={page === 'shop' && category === 'All products' && !showWishlist ? 'nav-active' : ''} onClick={goShop}>
-          Shop all
-        </button>
+        <button className={page === 'shop' && category === 'All products' && !showWishlist ? 'nav-active' : ''} onClick={goShop}>Shop all</button>
         {categories.slice(1, 5).map(c => (
           <button
             key={c}
@@ -458,7 +443,7 @@ export default function App() {
           </button>
         ))}
 
-        {/* ADMIN ONLY TABS */}
+        {/* Role-based navigation items */}
         {currentUser.role === 'admin' ? (
           <>
             <button
@@ -477,14 +462,12 @@ export default function App() {
             </button>
           </>
         ) : (
-          customerLastReceipt && (
-            <button
-              className={page === 'receipt' ? 'nav-active' : ''}
-              onClick={() => { setPage('receipt'); setMobileMenu(false); }}
-            >
-              Recent Receipt
-            </button>
-          )
+          <button
+            className={page === 'orders' || page === 'receipt' ? 'nav-active' : ''}
+            onClick={() => { setPage('orders'); setMobileMenu(false); }}
+          >
+            My orders
+          </button>
         )}
       </nav>
 
@@ -496,22 +479,15 @@ export default function App() {
           <kbd>⌘ K</kbd>
         </label>
 
-        {/* Current User Badge & Logout */}
-        <span className={`role-pill ${currentUser.role}`} style={{ padding: '6px 10px', fontSize: '10px' }}>
-          {currentUser.role === 'admin' ? <Shield size={12} /> : <User size={12} />}
-          {currentUser.role.toUpperCase()}
-        </span>
-
-        <button className="logout-btn" onClick={handleLogout} title="Sign out and return to Login Page">
+        <button className="logout-btn" onClick={handleLogout} title="Sign out and return to Login">
           <LogOut size={13} />
-          <span>Logout</span>
+          <span>Logout ({currentUser.role.toUpperCase()})</span>
         </button>
 
         <button className={`icon-button ${showWishlist ? 'active' : ''}`} onClick={() => { setShowWishlist(!showWishlist); setPage('shop'); setCategory('All products'); }} aria-label="Wishlist">
           <Heart size={19} />
           {wishlist.length > 0 && <i className="count-dot">{wishlist.length}</i>}
         </button>
-
         <button className="bag-button" onClick={() => setDrawer(true)}>
           <ShoppingBag size={19} />
           <span>Bag</span>
@@ -520,19 +496,22 @@ export default function App() {
       </div>
     </header>
 
-    {/* ================= PAGE: SHOPPING STOREFRONT ================= */}
+    {/* ================= PAGE: SHOPPING STOREFRONT (EXACT MATCH TO DATABASE UI) ================= */}
     {page === 'shop' && <>
       {!showWishlist && category === 'All products' && !search && <section className="hero">
         <div className="hero-copy">
-          <div className="eyebrow"><span className="eyebrow-line" /> LIVE DATABASE CATALOG</div>
+          <div className="eyebrow"><span className="eyebrow-line" /> DISTRIBUTED E-COMMERCE CATALOG</div>
           <h1>Quality goods.<br /><em>Delivered securely.</em></h1>
-          <p>Multi-category products synchronized directly with PostgreSQL. Transactions protected with the Saga pattern.</p>
+          <p>Browse electronics, clothing, cosmetics, medical essentials, and more with distributed ACID guarantees.</p>
           <button className="primary-button" onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}>
-            Explore the collection <ArrowRight size={17} />
+            Explore collection <ArrowRight size={17} />
           </button>
           <div className="hero-proof">
-            <div className="avatar-stack"><span>J</span><span>A</span><span>M</span></div>
-            <div><div className="proof-stars">★★★★★</div><small>Payment failure threshold: $1,000.00</small></div>
+            <div className="avatar-stack"><span>S</span><span>R</span><span>I</span></div>
+            <div>
+              <div className="proof-stars">★★★★★</div>
+              <small>Payment threshold: $1,000.00 · Live DB Sync</small>
+            </div>
           </div>
         </div>
         <div className="hero-visual">
@@ -542,29 +521,19 @@ export default function App() {
             <div>
               <span>01 / FEATURED</span>
               <strong>{products[0]?.name}</strong>
-              <small>{products[0]?.category} · {products[0]?.detail}</small>
+              <small>{products[0]?.category}</small>
             </div>
             <b>{money(products[0]?.price)}</b>
           </div>
-          <div className="floating-chip chip-a"><Zap size={16} /><span>Live Stock<br /><b>{products[0]?.stock} in database</b></span></div>
-          <div className="floating-chip chip-b"><ShieldCheck size={17} /><span>Saga Protected<br /><b>Rollback &gt; $1,000</b></span></div>
-          <div className="hero-spark spark-a">✳</div><div className="hero-spark spark-b">✳</div>
         </div>
       </section>}
-
-      <section className="trust-strip">
-        <div><Truck /><span><b>Fast delivery</b><small>On all orders</small></span></div>
-        <div><ShieldCheck /><span><b>Saga Reliability</b><small>Threshold: $1,000.00</small></span></div>
-        <div><RotateCcw /><span><b>Automatic Compensation</b><small>Stock releases on payment decline</small></span></div>
-        <div><Headphones /><span><b>Role: {currentUser.role.toUpperCase()}</b><small>{currentUser.name}</small></span></div>
-      </section>
 
       <main id="products" className="catalog">
         <div className="section-heading">
           <div>
-            <div className="eyebrow">{showWishlist ? 'SAVED FOR LATER' : 'LIVE DATABASE INVENTORY'}</div>
+            <div className="eyebrow">{showWishlist ? 'SAVED FOR LATER' : 'ALL CATEGORIES'}</div>
             <h2>{showWishlist ? 'Your wishlist' : category === 'All products' ? 'Explore all products.' : category}</h2>
-            <p>Real-time inventory synchronized across distributed database microservices.</p>
+            <p>Real-time inventory synchronized across distributed database nodes.</p>
           </div>
           <div className="catalog-controls">
             <label className="sort-control">
@@ -592,58 +561,96 @@ export default function App() {
           ))}
         </div>
 
-        {(search || showWishlist) && <div className="result-note">
-          {filtered.length} {filtered.length === 1 ? 'item' : 'items'} {showWishlist ? 'saved' : `matching “${search}”`}
-          <button onClick={() => { setSearch(''); setShowWishlist(false); }}>Clear <X size={13} /></button>
-        </div>}
-
         {filtered.length ? (
           <div className="product-grid">
-            {filtered.map(p => <article className="product-card" key={p.id}>
-              <div className="product-image-wrap" onClick={() => addToCart(p)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && addToCart(p)} aria-label={`Quick add ${p.name}`}>
-                {p.tag && <span className={`product-tag ${p.tag.includes('1K') || p.tag.includes('10K') ? 'tag-deal' : ''}`}>{p.tag}</span>}
-                <button className={`wish-button ${wishlist.includes(p.id) ? 'wished' : ''}`} onClick={e => { e.stopPropagation(); toggleWish(p.id); }} aria-label="Save to wishlist">
-                  <Heart size={17} fill={wishlist.includes(p.id) ? 'currentColor' : 'none'} />
-                </button>
-                <ProductArt product={p} />
-                <span className="quick-add">Quick add <Plus size={14} /></span>
-              </div>
-              <div className="product-meta"><span>{p.category}</span><span className="rating"><Star size={12} fill="currentColor" />{p.rating}</span></div>
-              <h3>{p.name}</h3>
-              <p className="product-detail">Stock: <b>{p.stock}</b> available</p>
-              <div className="product-price">
-                <strong>{money(p.price)}</strong>
-                <button onClick={() => addToCart(p)} aria-label={`Add ${p.name} to bag`}><Plus size={17} /></button>
-              </div>
-            </article>)}
+            {filtered.map((p) => (
+              <article className="product-card" key={p.id}>
+                <div className="product-image-wrap" onClick={() => addToCart(p)} role="button" tabIndex={0} aria-label={`Quick add ${p.name}`}>
+                  <button className={`wish-button ${wishlist.includes(p.id) ? 'wished' : ''}`} onClick={e => { e.stopPropagation(); toggleWish(p.id); }}>
+                    <Heart size={17} fill={wishlist.includes(p.id) ? 'currentColor' : 'none'} />
+                  </button>
+                  <ProductArt product={p} />
+                  <span className="quick-add">Quick add <Plus size={14} /></span>
+                </div>
+                <div className="product-meta"><span>{p.category}</span><span className="rating"><Star size={12} fill="currentColor" />{p.rating}</span></div>
+                <h3>{p.name}</h3>
+                <p className="product-detail">Stock: <b>{p.stock}</b> available</p>
+                <div className="product-price">
+                  <strong>{money(p.price)}</strong>
+                  <button onClick={() => addToCart(p)} aria-label={`Add ${p.name} to cart`}><Plus size={17} /></button>
+                </div>
+              </article>
+            ))}
           </div>
         ) : (
           <div className="empty-state">
             <Heart size={28} />
             <h3>No products found</h3>
-            <p>Try searching another term or selecting a different category.</p>
-            <button className="primary-button" onClick={goShop}>Reset filters <ArrowRight size={16} /></button>
+            <p>Try searching another term or category.</p>
+            <button className="primary-button" onClick={goShop}>Reset filters</button>
           </div>
         )}
       </main>
     </>}
 
+    {/* ================= PAGE: CUSTOMER ORDER HISTORY ================= */}
+    {(page === 'orders' || page === 'receipt') && (
+      <main className="orders-page">
+        <button className="back-link" onClick={goShop}><ChevronRight size={15} className="back-chevron" /> Back to shopping</button>
+        <div className="section-heading">
+          <div><div className="eyebrow">YOUR ACCOUNT</div><h2>Order history.</h2></div>
+          <span className="order-count">{orders.length} orders</span>
+        </div>
+        {orders.length === 0 ? (
+          <div className="empty-state order-empty">
+            <PackageCheck size={34} />
+            <h3>No orders placed yet.</h3>
+            <p>Select items from the catalog to place your first order.</p>
+            <button className="primary-button" onClick={goShop}>Start exploring</button>
+          </div>
+        ) : (
+          <div className="orders-list">
+            {orders.map((o, i) => (
+              <article className="order-card" key={(o.orderId || o.id) + '-' + i}>
+                <div className="order-card-top">
+                  <div>
+                    <span className="order-number">ORDER #{o.orderId || o.id}</span>
+                    <p>{o.date || o.created_at}</p>
+                  </div>
+                  <span className={`status-pill ${o.status === 'COMPLETED' ? 'status-success' : 'status-failed'}`}>
+                    {o.status}
+                  </span>
+                </div>
+                {o.status === 'CANCELLED' && (
+                  <div style={{ margin: '8px 0', fontSize: '11px', color: '#a03223', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <RotateCcw size={14} />
+                    <span><b>Payment Declined:</b> Total exceeded single transaction limit of <strong>$1,000.00</strong>. Saga compensation rollback returned stock to database.</span>
+                  </div>
+                )}
+                <div className="order-card-bottom">
+                  <span>Total: <b>{money(o.total || o.amount)}</b></span>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </main>
+    )}
+
     {/* ================= PAGE: ADMIN INVENTORY MANAGEMENT (ADMIN ONLY) ================= */}
     {page === 'inventory' && (
       currentUser.role === 'admin' ? (
-        <main className="admin-view-shell">
-          <div className="admin-bar-header">
+        <main className="admin-view-shell" style={{ width: '89.2%', maxWidth: '1390px', margin: '30px auto' }}>
+          <div className="admin-bar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div>
               <div className="eyebrow"><Shield size={12} /> ADMIN ACCESS GRANTED</div>
               <h2 style={{ font: '700 28px Manrope', margin: '6px 0 4px', color: '#243425' }}>Live Inventory Management</h2>
               <p style={{ fontSize: '12px', color: '#7a8277', margin: 0 }}>Real-time row-level lock tracking, stock levels, and replenishment.</p>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="admin-tab-btn active" onClick={refreshAdminData} disabled={loadingAdminData}>
-                <RefreshCw size={13} className={loadingAdminData ? 'spinner' : ''} />
-                {loadingAdminData ? 'Refreshing...' : 'Refresh Stock'}
-              </button>
-            </div>
+            <button className="admin-tab-btn active" onClick={refreshAdminData} disabled={loadingAdminData}>
+              <RefreshCw size={13} className={loadingAdminData ? 'spinner' : ''} />
+              {loadingAdminData ? 'Refreshing...' : 'Refresh Stock'}
+            </button>
           </div>
 
           <div className="admin-table-card">
@@ -654,10 +661,10 @@ export default function App() {
                   <th>Product Name</th>
                   <th>Category</th>
                   <th>Price ($)</th>
-                  <th>Total Physical Stock</th>
-                  <th>Reserved Stock (Saga In-Flight)</th>
-                  <th>Available to Purchase</th>
-                  <th>Inventory Status</th>
+                  <th>Physical Stock</th>
+                  <th>Reserved Stock (Saga)</th>
+                  <th>Available</th>
+                  <th>Status</th>
                   <th>Admin Actions</th>
                 </tr>
               </thead>
@@ -670,7 +677,7 @@ export default function App() {
                     <tr key={p.id}>
                       <td style={{ fontWeight: 700, color: '#38533a' }}>#{p.id}</td>
                       <td><b>{p.name}</b></td>
-                      <td><span style={{ fontSize: '11px', background: '#eaf0e4', padding: '3px 8px', borderRadius: '4px', fontWeight: 600 }}>{p.category}</span></td>
+                      <td><span style={{ fontSize: '10px', background: '#eaf0e4', padding: '3px 8px', borderRadius: '4px', fontWeight: 600 }}>{p.category}</span></td>
                       <td><strong>{money(p.price)}</strong></td>
                       <td><strong>{totalStock}</strong> units</td>
                       <td>
@@ -713,8 +720,8 @@ export default function App() {
     {/* ================= PAGE: ADMIN ORDER DETAILS & SAGA EXPLORER (ADMIN ONLY) ================= */}
     {page === 'admin-orders' && (
       currentUser.role === 'admin' ? (
-        <main className="admin-view-shell">
-          <div className="admin-bar-header">
+        <main className="admin-view-shell" style={{ width: '89.2%', maxWidth: '1390px', margin: '30px auto' }}>
+          <div className="admin-bar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div>
               <div className="eyebrow"><Shield size={12} /> ADMIN ACCESS GRANTED</div>
               <h2 style={{ font: '700 28px Manrope', margin: '6px 0 4px', color: '#243425' }}>Order Details &amp; Saga Transactions</h2>
@@ -732,7 +739,7 @@ export default function App() {
                 <tr>
                   <th>Order ID</th>
                   <th>Customer</th>
-                  <th>Product ID / Items</th>
+                  <th>Product ID</th>
                   <th>Quantity</th>
                   <th>Amount</th>
                   <th>Status</th>
@@ -786,70 +793,6 @@ export default function App() {
       )
     )}
 
-    {/* ================= PAGE: CUSTOMER ORDER RECEIPT (CUSTOMER ONLY) ================= */}
-    {page === 'receipt' && (
-      <main style={{ padding: '30px 5%' }}>
-        <button className="back-link" onClick={goShop}>
-          <ChevronRight size={15} className="back-chevron" /> Back to shopping
-        </button>
-
-        {customerLastReceipt ? (
-          <div className="customer-receipt-card">
-            <div className="receipt-header">
-              {customerLastReceipt.status === 'COMPLETED' ? (
-                <CircleCheck size={36} color="#3d7042" />
-              ) : (
-                <CircleX size={36} color="#b03426" />
-              )}
-              <div>
-                <h3>{customerLastReceipt.status === 'COMPLETED' ? 'Thank You For Your Order!' : 'Order Cancelled'}</h3>
-                <p>Order Reference: <strong>#{customerLastReceipt.orderId}</strong> · {customerLastReceipt.date}</p>
-              </div>
-            </div>
-
-            {customerLastReceipt.status === 'CANCELLED' && (
-              <div className="compensation-note" style={{ marginTop: '20px' }}>
-                <RotateCcw size={16} />
-                <span>
-                  <b>Payment Declined:</b> Total order amount exceeded the single transaction limit of <strong>$1,000.00</strong>. You were not charged, and your items were returned to inventory.
-                </span>
-              </div>
-            )}
-
-            <div className="receipt-items">
-              <span className="eyebrow" style={{ marginBottom: '10px' }}>PURCHASE SUMMARY</span>
-              {customerLastReceipt.items.map(it => (
-                <div className="receipt-row" key={it.id}>
-                  <span>{it.name} × {it.quantity}</span>
-                  <strong>{money(it.price * it.quantity)}</strong>
-                </div>
-              ))}
-            </div>
-
-            <div className="receipt-total-row">
-              <span>Total Paid:</span>
-              <span>{customerLastReceipt.status === 'COMPLETED' ? money(customerLastReceipt.total) : '$0.00'}</span>
-            </div>
-
-            <div style={{ marginTop: '24px', fontSize: '11px', color: '#7c8376', lineHeight: 1.6 }}>
-              <span>Delivery to: <strong>{customerLastReceipt.customer}</strong> ({customerLastReceipt.address})</span>
-            </div>
-
-            <button className="primary-button full-button" style={{ marginTop: '25px' }} onClick={goShop}>
-              Continue Shopping <ArrowRight size={16} />
-            </button>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <PackageCheck size={36} />
-            <h3>No recent receipt found</h3>
-            <p>Place an order through the store to view your purchase receipt.</p>
-            <button className="primary-button" onClick={goShop}>Start Shopping</button>
-          </div>
-        )}
-      </main>
-    )}
-
     {/* ================= MODAL: ADMIN SAGA INSPECTOR ================= */}
     {selectedOrder && currentUser.role === 'admin' && (
       <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setSelectedOrder(null)}>
@@ -878,7 +821,7 @@ export default function App() {
           <div className="saga-timeline">
             {(selectedOrder.steps || [
               { label: 'Order created in PENDING state', state: 'done' },
-              { label: 'Inventory reserved', state: 'done' },
+              { label: 'Inventory reserved in inventory_db', state: 'done' },
               selectedOrder.status === 'COMPLETED'
                 ? { label: 'Payment approved', state: 'done' }
                 : { label: 'Payment declined (Threshold: $1,000.00)', state: 'failed' },
@@ -911,99 +854,27 @@ export default function App() {
     )}
 
     {/* Cart Drawer */}
-    {drawer && <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setDrawer(false)}>
-      <aside className="cart-drawer">
-        <div className="drawer-head">
-          <div><span className="eyebrow">YOUR CART</span><h2>Bag <span>({count})</span></h2></div>
-          <button className="icon-button" onClick={() => setDrawer(false)} aria-label="Close cart"><X /></button>
-        </div>
-
-        {cart.length === 0 ? (
-          <div className="drawer-empty">
-            <ShoppingBag size={32} />
-            <h3>Your bag is empty</h3>
-            <p>Explore the catalog and add items to your cart.</p>
-            <button className="primary-button" onClick={() => setDrawer(false)}>Continue Shopping</button>
-          </div>
-        ) : (
-          <>
-            <div className="shipping-progress">
-              <div className="shipping-progress-label">
-                <Truck size={14} />
-                <span>{subtotal >= FREE_SHIPPING_OVER ? 'You unlocked free delivery!' : `Add ${money(FREE_SHIPPING_OVER - subtotal)} more for free delivery`}</span>
-              </div>
-              <div className="progress-track">
-                <span style={{ width: `${Math.min(100, (subtotal / FREE_SHIPPING_OVER) * 100)}%` }} />
-              </div>
-            </div>
-
-            <div className="cart-items">
-              {cart.map(item => <div className="cart-item" key={item.id}>
-                <ProductArt product={item} />
-                <div className="cart-item-info">
-                  <span>{item.category}</span>
-                  <b>{item.name}</b>
-                  <strong>{money(item.price)}</strong>
-                  <div className="qty-control">
-                    <button onClick={() => updateQty(item.id, -1)} aria-label="Decrease quantity"><Minus size={12} /></button>
-                    <span>{item.quantity}</span>
-                    <button onClick={() => updateQty(item.id, 1)} disabled={item.quantity >= item.stock} aria-label="Increase quantity"><Plus size={12} /></button>
-                  </div>
-                </div>
-              </div>)}
-            </div>
-
-            <div className="cart-summary">
-              <div><span>Subtotal</span><b>{money(subtotal)}</b></div>
-              <div><span>Shipping</span><b>{shipping === 0 ? 'FREE' : money(shipping)}</b></div>
-              <div className="summary-total"><span>Total</span><strong>{money(total)}</strong></div>
-              <button className="checkout-button" onClick={beginCheckout}>Continue to checkout <ArrowRight size={17} /></button>
-            </div>
-          </>
-        )}
-      </aside>
-    </div>}
+    {drawer && <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setDrawer(false)}><aside className="cart-drawer">
+      <div className="drawer-head"><div><span className="eyebrow">YOUR BAG</span><h2>Bag <span>({count})</span></h2></div><button className="icon-button" onClick={() => setDrawer(false)}><X /></button></div>
+      {cart.length === 0 ? <div className="drawer-empty"><ShoppingBag size={32} /><h3>Your bag is empty</h3><button className="primary-button" onClick={() => setDrawer(false)}>Explore items</button></div> : <>
+        <div className="cart-items">{cart.map(item => <div className="cart-item" key={item.id}><ProductArt product={item} /><div className="cart-item-info"><span>{item.category}</span><b>{item.name}</b><strong>{money(item.price)}</strong><div className="qty-control"><button onClick={() => updateQty(item.id,-1)}><Minus size={12} /></button><span>{item.quantity}</span><button onClick={() => updateQty(item.id,1)}><Plus size={12} /></button></div></div></div>)}</div>
+        <div className="cart-summary"><div><span>Subtotal</span><b>{money(subtotal)}</b></div><div className="summary-total"><span>Total</span><strong>{money(total)}</strong></div><button className="checkout-button" onClick={beginCheckout}>Continue to checkout <ArrowRight size={17} /></button></div>
+      </>}
+    </aside></div>}
 
     {/* Checkout Modal */}
-    {checkout && <div className="overlay checkout-overlay" onMouseDown={e => e.target === e.currentTarget && !placing && setCheckout(false)}>
-      <section className="checkout-modal">
-        <div className="drawer-head">
-          <div><span className="eyebrow">RESILIX CHECKOUT</span><h2>Order Checkout</h2></div>
-          <button className="icon-button" onClick={() => setCheckout(false)} disabled={placing}><X /></button>
+    {checkout && <div className="overlay checkout-overlay" onMouseDown={e => e.target === e.currentTarget && !placing && setCheckout(false)}><section className="checkout-modal">
+      <div className="drawer-head"><div><span className="eyebrow">CHECKOUT</span><h2>Saga Payment</h2></div><button className="icon-button" onClick={() => setCheckout(false)} disabled={placing}><X /></button></div>
+      <form className="checkout-form" onSubmit={submitOrder}>
+        <label>Full name<input value={fullName} onChange={e => setFullName(e.target.value)} required /></label>
+        <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} required /></label>
+        <label>Delivery address<textarea value={address} onChange={e => setAddress(e.target.value)} rows="3" required /></label>
+        <div className="demo-payment-note" style={{ background: '#f0f4ea', padding: '12px', borderRadius: '8px', margin: '14px 0', fontSize: '11px', color: '#445642' }}>
+          <b>Saga Policy:</b> Orders &le; $1,000.00 succeed immediately. Orders &gt; $1,000.00 trigger automated Saga compensation rollback.
         </div>
-        <div className="checkout-layout">
-          <form className="checkout-form" onSubmit={submitOrder}>
-            <h3><span>1</span> Delivery details</h3>
-            <label>Customer Name<input value={fullName} onChange={e => setFullName(e.target.value)} required /></label>
-            <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} required /></label>
-            <label>Delivery address<textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="Enter street and city" rows="2" required /></label>
-            <div className="demo-payment-note">
-              <CreditCard size={18} />
-              <div>
-                <b>Payment Limit Policy:</b>
-                <p>Transactions ≤ <strong>$1,000.00</strong> succeed immediately. Orders <strong>&gt; $1,000.00</strong> trigger automated Saga compensation rollback.</p>
-              </div>
-            </div>
-            <button className="checkout-button" type="submit" disabled={placing}>
-              {placing ? <><span className="spinner" /> Orchestrating Saga...</> : <>Place Order · {money(total)} <ArrowRight size={17} /></>}
-            </button>
-          </form>
-          <div className="checkout-summary">
-            <h3>Items in Order</h3>
-            {cart.map(i => <div className="checkout-line" key={i.id}>
-              <ProductArt product={i} />
-              <div><b>{i.name}</b><small>Qty: {i.quantity}</small></div>
-              <strong>{money(i.price * i.quantity)}</strong>
-            </div>)}
-            <div className="checkout-totals">
-              <div><span>Subtotal</span><b>{money(subtotal)}</b></div>
-              <div><span>Shipping</span><b>{shipping === 0 ? 'FREE' : money(shipping)}</b></div>
-              <div className="summary-total"><span>Total</span><strong>{money(total)}</strong></div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>}
+        <button className="checkout-button" type="submit" disabled={placing}>{placing ? 'Processing...' : `Place Order · ${money(total)}`}</button>
+      </form>
+    </section></div>}
 
     {/* Footer */}
     <footer className="footer">
