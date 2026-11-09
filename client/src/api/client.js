@@ -1,17 +1,17 @@
 /*
- * Integration seam for the existing Resilix services.
- * Keep components calling this adapter rather than fetch() directly.
- * Current mode is MOCK; later set VITE_USE_MOCK_API=false and map the
- * request/response contracts to the deployed API gateway / order service.
+ * Integration seam for Resilix services.
+ * Defaults to calling real microservices on http://localhost:5001.
+ * Only falls back to in-browser mock if VITE_USE_MOCK_API=true is set.
  */
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001'
-const USE_MOCK = (import.meta.env.VITE_USE_MOCK_API ?? 'true') !== 'false'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_API === 'true';
 
-const wait = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms))
+const wait = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function placeOrder({ productId, quantity, amount }) {
   if (USE_MOCK) {
-    await wait(850)
+    console.log('[CLIENT] In mock API mode (in-browser simulation)');
+    await wait(850);
     // Mirrors the current demo payment-service rule: amounts > 1000 fail.
     if (amount > 1000) {
       return {
@@ -26,7 +26,7 @@ export async function placeOrder({ productId, quantity, amount }) {
           { label: 'Inventory released', state: 'compensated' },
           { label: 'Order cancelled', state: 'compensated' },
         ],
-      }
+      };
     }
     return {
       status: 'SUCCESS',
@@ -38,18 +38,29 @@ export async function placeOrder({ productId, quantity, amount }) {
         { label: 'Payment successful', state: 'done' },
         { label: 'Order completed', state: 'done' },
       ],
-    }
+    };
   }
 
-  // Future integration: current order-service accepts { productId, quantity, amount }.
-  const response = await fetch(`${API_BASE}/orders`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productId, quantity, amount }),
-  })
-  const data = await response.json()
-  if (!response.ok) return { ...data, status: data.status || 'FAILED' }
-  return { ...data, status: data.status || 'SUCCESS' }
+  // Real microservices call to order-service orchestrator
+  console.log(`[CLIENT] Sending POST ${API_BASE}/orders (Product #${productId}, Qty ${quantity}, Amount ₹${amount})`);
+  try {
+    const response = await fetch(`${API_BASE}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId, quantity, amount }),
+    });
+    const data = await response.json();
+    if (!response.ok) return { ...data, status: data.status || 'FAILED' };
+    return { ...data, status: data.status || 'SUCCESS' };
+  } catch (err) {
+    console.error('[CLIENT] Failed to connect to Order Service:', err);
+    return {
+      status: 'FAILED',
+      orderId: 'ERR',
+      reason: `Could not reach Order Service at ${API_BASE}. Make sure Order Service is running on port 5001.`,
+      steps: [{ label: `Connection to backend failed (${err.message})`, state: 'failed' }],
+    };
+  }
 }
 
-export { USE_MOCK }
+export { USE_MOCK };
