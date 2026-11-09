@@ -73,7 +73,7 @@ async function runCheck() {
     process.exit(1);
   }
 
-  console.log('\n2. Testing Successful Order (Amount <= 10,000):');
+  console.log('\n2. Testing Successful Order (Amount <= 1,000):');
   try {
     const successPayload = JSON.stringify({ productId: 1, quantity: 1, amount: 399.00 });
     const successRes = await request('http://127.0.0.1:5001/orders', { method: 'POST' }, successPayload);
@@ -90,12 +90,12 @@ async function runCheck() {
     console.log('   [FAIL] Failed to test successful order:', err.message);
   }
 
-  console.log('\n3. Testing Saga Compensation / Rollback (Amount > 10,000):');
+  console.log('\n3. Testing Saga Compensation / Rollback (Amount > 1,000):');
   try {
-    const failPayload = JSON.stringify({ productId: 6, quantity: 10, amount: 12990.00 });
+    const failPayload = JSON.stringify({ productId: 6, quantity: 1, amount: 1299.00 });
     const failRes = await request('http://127.0.0.1:5001/orders', { method: 'POST' }, failPayload);
     if (failRes.body.status === 'FAILED') {
-      console.log(`   [PASS] Order #${failRes.body.orderId} failed as expected (Amount exceeds 10,000 limit).`);
+      console.log(`   [PASS] Order #${failRes.body.orderId} failed as expected (Amount exceeds 1,000 limit).`);
       console.log(`   [PASS] Saga compensation rollback executed cleanly!`);
       console.log('   Execution trace:');
       (failRes.body.steps || []).forEach(step => {

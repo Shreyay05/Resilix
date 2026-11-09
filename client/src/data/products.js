@@ -11,6 +11,6 @@ export const products = [
   { id: 10, name: 'PlayStation DualSense Edge', detail: 'Pro wireless controller', price: 199, oldPrice: 229, category: 'Gaming', icon: 'gamepad', tint: 'peach', rating: 4.8, stock: 20 },
   { id: 11, name: 'Meta Quest 3', detail: 'Mixed reality, made immersive', price: 499, oldPrice: 549, category: 'Gaming', icon: 'vr', tint: 'lilac', rating: 4.7, stock: 16 },
   { id: 12, name: 'Sonos Era 100', detail: 'Rich sound for every room', price: 249, oldPrice: 279, category: 'Smart home', icon: 'speaker', tint: 'mint', rating: 4.6, stock: 18 },
-  { id: 13, name: 'Apple Mac Studio M2 Ultra Bundle', detail: 'Flagship studio workstation · Exceeds 10,000 threshold', price: 12500, oldPrice: 13999, category: 'Computers', icon: 'laptop', tint: 'lilac', tag: 'OVER 10K (DEMO SAGA)', rating: 5.0, stock: 5 },
+  { id: 13, name: 'Apple Mac Studio M2 Ultra Bundle', detail: 'Flagship studio workstation · Exceeds 1,000 threshold', price: 12500, oldPrice: 13999, category: 'Computers', icon: 'laptop', tint: 'lilac', tag: 'OVER 1K (DEMO SAGA)', rating: 5.0, stock: 5 },
 ]
 export const categories = ['All products', 'Audio', 'Accessories', 'Displays', 'Computers', 'Storage', 'Gaming', 'Smart home']

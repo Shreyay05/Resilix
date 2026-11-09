@@ -14,12 +14,12 @@ export async function placeOrder({ productId, quantity, amount, customer }) {
   if (USE_MOCK) {
     console.log('[CLIENT] In mock API mode (in-browser simulation)');
     await wait(850);
-    // Mirrors the payment-service rule: amounts > 10000 fail.
-    if (amount > 10000) {
+    // Mirrors the payment-service rule: amounts > 1000 fail.
+    if (amount > 1000) {
       return {
         status: 'FAILED',
         orderId: `RX-${Date.now().toString().slice(-6)}`,
-        reason: 'Payment declined: Amount exceeds limit (Threshold: 10,000)',
+        reason: 'Payment declined: Amount exceeds limit (Threshold: 1,000)',
         message: 'Demo saga compensation completed: reserved inventory was released.',
         steps: [
           { label: 'Order created', state: 'done' },

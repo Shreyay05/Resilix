@@ -311,7 +311,7 @@ function App() {
       } else {
         setPage('receipt')
       }
-      notify(failed ? 'Order cancelled: Payment declined (exceeds ₹10,000 threshold).' : 'Order placed successfully!')
+      notify(failed ? 'Order cancelled: Payment declined (exceeds ₹1,000 threshold).' : 'Order placed successfully!')
     } catch (err) {
       notify('Could not place order. Please check backend connection.')
     } finally {
@@ -354,7 +354,7 @@ function App() {
     {/* Announcement bar */}
     <div className="announcement">
       <Sparkles size={13} />
-      <span>Saga Pattern Microservices Demo · Payment Threshold: <strong>₹10,000</strong></span>
+      <span>Saga Pattern Microservices Demo · Payment Threshold: <strong>₹1,000</strong></span>
       <span>·</span>
       <span>Logged in as: <strong style={{ textTransform: 'uppercase' }}>{currentUser.role}</strong> ({currentUser.name})</span>
     </div>
@@ -450,7 +450,7 @@ function App() {
           </button>
           <div className="hero-proof">
             <div className="avatar-stack"><span>J</span><span>A</span><span>M</span></div>
-            <div><div className="proof-stars">★★★★★</div><small>Payment failure threshold: ₹10,000</small></div>
+            <div><div className="proof-stars">★★★★★</div><small>Payment failure threshold: ₹1,000</small></div>
           </div>
         </div>
         <div className="hero-visual">
@@ -472,7 +472,7 @@ function App() {
 
       <section className="trust-strip">
         <div><Truck /><span><b>Fast delivery</b><small>On all orders</small></span></div>
-        <div><ShieldCheck /><span><b>Saga Reliability</b><small>Threshold: ₹10,000</small></span></div>
+        <div><ShieldCheck /><span><b>Saga Reliability</b><small>Threshold: ₹1,000</small></span></div>
         <div><RotateCcw /><span><b>Automatic Compensation</b><small>Stock releases on payment decline</small></span></div>
         <div><Headphones /><span><b>Live Support</b><small>Role: {currentUser.role.toUpperCase()}</small></span></div>
       </section>
@@ -511,7 +511,7 @@ function App() {
           <div className="product-grid">
             {filtered.map(p => <article className="product-card" key={p.id}>
               <div className="product-image-wrap" onClick={() => addToCart(p)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && addToCart(p)} aria-label={`Quick add ${p.name}`}>
-                {p.tag && <span className={`product-tag ${p.tag.includes('10K') ? 'tag-deal' : ''}`}>{p.tag}</span>}
+                {p.tag && <span className={`product-tag ${p.tag.includes('1K') || p.tag.includes('10K') ? 'tag-deal' : ''}`}>{p.tag}</span>}
                 <button className={`wish-button ${wishlist.includes(p.id) ? 'wished' : ''}`} onClick={e => { e.stopPropagation(); toggleWish(p.id); }} aria-label="Save to wishlist">
                   <Heart size={17} fill={wishlist.includes(p.id) ? 'currentColor' : 'none'} />
                 </button>
@@ -724,7 +724,7 @@ function App() {
               <div className="compensation-note" style={{ marginTop: '20px' }}>
                 <RotateCcw size={16} />
                 <span>
-                  <b>Payment Declined:</b> Total order amount exceeded the single transaction limit of <strong>₹10,000</strong>. You were not charged, and your items were returned to inventory.
+                  <b>Payment Declined:</b> Total order amount exceeded the single transaction limit of <strong>₹1,000</strong>. You were not charged, and your items were returned to inventory.
                 </span>
               </div>
             )}
@@ -782,7 +782,7 @@ function App() {
               <p>
                 {selectedOrder.status === 'COMPLETED'
                   ? 'All microservice steps (order, reservation, payment) finished successfully.'
-                  : `Payment declined (${selectedOrder.reason || 'Amount exceeds ₹10,000'}). Compensating actions released reserved stock automatically.`}
+                  : `Payment declined (${selectedOrder.reason || 'Amount exceeds ₹1,000'}). Compensating actions released reserved stock automatically.`}
               </p>
             </div>
           </div>
@@ -794,7 +794,7 @@ function App() {
               { label: 'Inventory reserved', state: 'done' },
               selectedOrder.status === 'COMPLETED'
                 ? { label: 'Payment approved', state: 'done' }
-                : { label: 'Payment declined (Threshold: ₹10,000)', state: 'failed' },
+                : { label: 'Payment declined (Threshold: ₹1,000)', state: 'failed' },
               selectedOrder.status === 'COMPLETED'
                 ? { label: 'Order marked COMPLETED', state: 'done' }
                 : { label: 'Compensating action: Reserved stock released', state: 'compensated' },
@@ -883,7 +883,7 @@ function App() {
               <CreditCard size={18} />
               <div>
                 <b>Payment Limit Policy:</b>
-                <p>Transactions $\le$ <strong>₹10,000</strong> succeed immediately. Orders <strong>&gt; ₹10,000</strong> trigger automated Saga compensation rollback.</p>
+                <p>Transactions ≤ <strong>₹1,000</strong> succeed immediately. Orders <strong>&gt; ₹1,000</strong> trigger automated Saga compensation rollback.</p>
               </div>
             </div>
             <button className="checkout-button" type="submit" disabled={placing}>
@@ -930,7 +930,7 @@ function App() {
       </div>
       <div className="footer-bottom">
         <span>© 2026 Resilix Store. Role-Based Access Control Enabled.</span>
-        <span><ShieldCheck size={14} /> Threshold: ₹10,000</span>
+        <span><ShieldCheck size={14} /> Threshold: ₹1,000</span>
       </div>
     </footer>
 
