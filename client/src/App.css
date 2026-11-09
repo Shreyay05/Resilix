@@ -1,0 +1,191 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+export default function App() {
+  const [role, setRole] = useState('Admin');
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Microservice Ports matching your backend setup
+  const INVENTORY_SERVICE = 'http://localhost:5002';
+  const ORDER_SERVICE = 'http://localhost:5001';
+  const PAYMENT_SERVICE = 'http://localhost:5003';
+
+  useEffect(() => {
+    fetchAllData();
+  }, [role]);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch Products from Inventory Service (Port 5002)
+      const prodRes = await axios.get(`${INVENTORY_SERVICE}/products`);
+      setProducts(prodRes.data);
+
+      // 2. Fetch Orders & Payments with RBAC headers if authorized
+      if (role !== 'Customer') {
+        const headers = { 'x-user-role': role };
+
+        try {
+          const orderRes = await axios.get(`${ORDER_SERVICE}/orders`, { headers });
+          setOrders(orderRes.data);
+        } catch (e) {
+          console.warn('Orders service restricted or offline');
+        }
+
+        try {
+          const payRes = await axios.get(`${PAYMENT_SERVICE}/payments`, { headers });
+          setPayments(payRes.data);
+        } catch (e) {
+          console.warn('Payments service restricted or offline');
+        }
+      }
+    } catch (err) {
+      console.error('Error connecting to microservices:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
+      {/* Top Header & RBAC Controller */}
+      <header className="flex flex-col md:flex-row justify-between items-center bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl mb-8 gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">⚡</span>
+            <h1 className="text-2xl md:text-3xl font-black bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+              Resilix Distributed E-Commerce
+            </h1>
+          </div>
+          <p className="text-sm text-slate-400 mt-1">
+            Microservice Architecture &bull; Saga Pattern &bull; Concurrency Control
+          </p>
+        </div>
+
+        {/* RBAC Role Switcher */}
+        <div className="flex items-center gap-3 bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">
+          <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">RBAC Role:</span>
+          <select 
+            value={role} 
+            onChange={(e) => setRole(e.target.value)}
+            className="bg-indigo-600 text-white font-semibold px-3 py-1.5 rounded-lg outline-none cursor-pointer hover:bg-indigo-500 transition text-sm"
+          >
+            <option value="Admin">🛡️ Admin (Full Access)</option>
+            <option value="Manager">📦 Manager (Operations)</option>
+            <option value="Customer">🛒 Customer (Storefront)</option>
+          </select>
+        </div>
+      </header>
+
+      {/* Main Content Grid */}
+      {loading ? (
+        <div className="text-center py-24 text-cyan-400 animate-pulse font-mono tracking-wide">
+          Syncing Distributed Databases across Ports 5001, 5002, 5003...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Inventory Service Panel */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold flex items-center gap-2">📦 Inventory Service</h2>
+              <span className="text-xs bg-cyan-950 text-cyan-400 px-2.5 py-1 rounded-full border border-cyan-800 font-mono">Port 5002</span>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">Row-level locking (`FOR UPDATE`)[cite: 5].</p>
+
+            <div className="flex-1 max-h-[420px] overflow-y-auto space-y-3 pr-1">
+              {products.map(p => (
+                <div key={p.id} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold text-sm">{p.name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Stock: <span className="text-emerald-400 font-bold">{p.stock}</span> | 
+                      Reserved: <span className="text-amber-400 font-bold">{p.reserved_stock || 0}</span>
+                    </p>
+                  </div>
+                  {role !== 'Customer' && (
+                    <button className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs px-2.5 py-1.5 rounded-lg transition border border-indigo-500/30 font-medium">
+                      Audit
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Orders Service Panel (RBAC Protected) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold flex items-center gap-2">📋 Order Ledger</h2>
+              <span className="text-xs bg-indigo-950 text-indigo-400 px-2.5 py-1 rounded-full border border-indigo-800 font-mono">Port 5001</span>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">Distributed transaction state tracking.</p>
+
+            {role === 'Customer' ? (
+              <div className="my-auto bg-slate-950/60 border border-amber-500/20 text-amber-400 p-6 rounded-xl text-center">
+                <p className="font-bold text-sm mb-1">🔒 RBAC Restricted</p>
+                <p className="text-xs text-slate-400">Customer view cannot inspect raw distributed order logs. Switch to Manager or Admin.</p>
+              </div>
+            ) : (
+              <div className="flex-1 max-h-[420px] overflow-y-auto space-y-3 pr-1">
+                {orders.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-10">No order records found.</p>
+                ) : (
+                  orders.map(o => (
+                    <div key={o.id} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold text-sm">Order #{o.id} <span className="text-xs text-slate-400">(Prod: {o.product_id})</span></p>
+                        <p className="text-xs text-slate-400 mt-0.5">Amount: <span className="text-cyan-400 font-bold">${o.amount}</span></p>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${o.status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
+                        {o.status}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Payment Service Panel (RBAC Protected) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold flex items-center gap-2">💳 Payment Service</h2>
+              <span className="text-xs bg-purple-950 text-purple-400 px-2.5 py-1 rounded-full border border-purple-800 font-mono">Port 5003</span>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">Secure financial ledger validation.</p>
+
+            {role === 'Customer' ? (
+              <div className="my-auto bg-slate-950/60 border border-amber-500/20 text-amber-400 p-6 rounded-xl text-center">
+                <p className="font-bold text-sm mb-1">🔒 RBAC Restricted</p>
+                <p className="text-xs text-slate-400">Financial ledgers are restricted to Manager and Admin roles.</p>
+              </div>
+            ) : (
+              <div className="flex-1 max-h-[420px] overflow-y-auto space-y-3 pr-1">
+                {payments.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-10">No payment logs found.</p>
+                ) : (
+                  payments.map(pay => (
+                    <div key={pay.id} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold text-sm">Payment #{pay.id} <span className="text-xs text-slate-400">(Order: {pay.order_id})</span></p>
+                        <p className="text-xs text-slate-400 mt-0.5">Paid: <span className="text-cyan-400 font-bold">${pay.amount}</span></p>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${pay.status === 'SUCCESS' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
+                        {pay.status}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+}

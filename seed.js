@@ -1,28 +1,40 @@
 const { Pool } = require('pg');
 
-// Database Pools
+const DB_HOST = process.env.DB_HOST || '127.0.0.1';
+const DB_USER = process.env.DB_USER || (process.env.DOCKER === 'false' ? 'postgres' : 'user');
+const DB_PASSWORD = process.env.DB_PASSWORD || (process.env.DOCKER === 'false' ? 'Shreya123' : 'password');
+
+// In Docker Compose: order-db is port 5431, inventory-db is 5432, payment-db is 5433.
+// In single local PostgreSQL instance: all databases are typically on port 5432.
+const INVENTORY_PORT = parseInt(process.env.INVENTORY_DB_PORT || process.env.DB_PORT || '5432', 10);
+const ORDER_PORT = parseInt(process.env.ORDER_DB_PORT || process.env.DB_PORT || '5431', 10);
+const PAYMENT_PORT = parseInt(process.env.PAYMENT_DB_PORT || process.env.DB_PORT || '5433', 10);
+
 const inventoryPool = new Pool({
-  host: '127.0.0.1',
-  port: 5432,
-  user: 'postgres',
-  password: 'Shreya123', // <-- Update with your real PostgreSQL password
+  host: DB_HOST,
+  port: INVENTORY_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
   database: 'inventory_db',
+  connectionTimeoutMillis: 3000,
 });
 
 const orderPool = new Pool({
-  host: '127.0.0.1',
-  port: 5432,
-  user: 'postgres',
-  password: 'Shreya123', // <-- Update with your real PostgreSQL password
+  host: DB_HOST,
+  port: ORDER_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
   database: 'order_db',
+  connectionTimeoutMillis: 3000,
 });
 
 const paymentPool = new Pool({
-  host: '127.0.0.1',
-  port: 5432,
-  user: 'postgres',
-  password: 'Shreya123', // <-- Update with your real PostgreSQL password
+  host: DB_HOST,
+  port: PAYMENT_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
   database: 'payments_db',
+  connectionTimeoutMillis: 3000,
 });
 
 const products = [
@@ -85,7 +97,7 @@ async function seedData() {
     console.log('🌱 Starting database seeding...');
 
     // 1. Seed Inventory Database
-    console.log('--> Seeding inventory_db...');
+    console.log(`--> Seeding inventory_db at ${DB_HOST}:${INVENTORY_PORT}...`);
     await inventoryPool.query(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
@@ -104,7 +116,7 @@ async function seedData() {
     }
 
     // 2. Seed Order Database
-    console.log('--> Seeding order_db...');
+    console.log(`--> Seeding order_db at ${DB_HOST}:${ORDER_PORT}...`);
     await orderPool.query(`
       CREATE TABLE IF NOT EXISTS orders (
         id SERIAL PRIMARY KEY,
@@ -124,7 +136,7 @@ async function seedData() {
     }
 
     // 3. Seed Payment Database
-    console.log('--> Seeding payment_db...');
+    console.log(`--> Seeding payment_db at ${DB_HOST}:${PAYMENT_PORT}...`);
     await paymentPool.query(`
       CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
@@ -146,11 +158,14 @@ async function seedData() {
 
     console.log('✅ Databases successfully seeded with realistic data!');
   } catch (error) {
-    console.error('❌ Error seeding databases:', error);
+    console.error('❌ Error seeding databases:', error.message);
+    console.log('\n💡 Note: If using Docker, start the databases first:');
+    console.log('   docker compose up -d');
+    console.log('   If using a local PostgreSQL, check that it is running and update credentials if needed.');
   } finally {
-    await inventoryPool.end();
-    await orderPool.end();
-    await paymentPool.end();
+    await inventoryPool.end().catch(() => {});
+    await orderPool.end().catch(() => {});
+    await paymentPool.end().catch(() => {});
   }
 }
 

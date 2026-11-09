@@ -1,58 +1,214 @@
 const express = require('express');
+const cors = require('cors');
 const { Pool } = require('pg');
 const axios = require('axios');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
+const PORT = process.env.PORT || 5001;
+const INVENTORY_URL = process.env.INVENTORY_SERVICE_URL || 'http://127.0.0.1:5002';
+const PAYMENT_URL = process.env.PAYMENT_SERVICE_URL || 'http://127.0.0.1:5003';
+
+let useInMemory = false;
+const inMemoryOrders = [];
+let nextOrderId = 1;
+
+// In docker-compose, order-db is mapped to host port 5431.
+// If using single local PostgreSQL instance, DB_PORT can be set to 5432.
 const db = new Pool({
-  host: '127.0.0.1',
-  port: 5432,
-  user: 'postgres',
-  password: 'Shreya123',
-  database: 'order_db',
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT || '5431', 10),
+  user: process.env.DB_USER || 'user',
+  password: process.env.DB_PASSWORD || 'password',
+  database: process.env.DB_NAME || 'order_db',
+  connectionTimeoutMillis: 2000,
 });
 
+async function initDB() {
+  try {
+    const client = await db.connect();
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        product_id INT NOT NULL,
+        quantity INT NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        status VARCHAR(20) NOT NULL
+      );
+    `);
+    const maxRes = await client.query('SELECT COALESCE(MAX(id), 0) as max_id FROM orders');
+    nextOrderId = parseInt(maxRes.rows[0].max_id, 10) + 1;
+    client.release();
+    console.log('✅ [Order DB] Connected to PostgreSQL (order_db)');
+  } catch (err) {
+    useInMemory = true;
+    console.warn(`⚠️ [Order DB] PostgreSQL unreachable (${err.message}). Using in-memory store.`);
+  }
+}
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    service: 'order-service',
+    status: 'UP',
+    port: PORT,
+    storage: useInMemory ? 'in-memory' : 'postgresql',
+    endpoints: {
+      inventoryService: INVENTORY_URL,
+      paymentService: PAYMENT_URL,
+    },
+  });
+});
+
+// GET /orders - List all orders
+app.get('/orders', async (req, res) => {
+  if (useInMemory) {
+    return res.json(inMemoryOrders);
+  }
+  try {
+    const result = await db.query('SELECT * FROM orders ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /orders/:id - Single order
+app.get('/orders/:id', async (req, res) => {
+  const orderId = parseInt(req.params.id, 10);
+  if (useInMemory) {
+    const order = inMemoryOrders.find(o => o.id === orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    return res.json(order);
+  }
+  try {
+    const result = await db.query('SELECT * FROM orders WHERE id = $1', [orderId]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /orders - Saga Orchestration Entry Point
 app.post('/orders', async (req, res) => {
   const { productId, quantity, amount } = req.body;
+  const pId = parseInt(productId, 10);
+  const qty = parseInt(quantity, 10);
+  const amt = parseFloat(amount);
+
+  if (isNaN(pId) || isNaN(qty) || isNaN(amt) || qty <= 0) {
+    return res.status(400).json({
+      status: 'FAILED',
+      reason: 'Invalid input parameters (productId, quantity, amount)',
+      steps: [{ label: 'Input validation failed', state: 'failed' }],
+    });
+  }
+
+  const steps = [];
+  let orderId;
+  let inventoryReserved = false;
 
   // Step 1: Create Order in PENDING state
-  const orderRes = await db.query(
-    'INSERT INTO orders (product_id, quantity, amount, status) VALUES ($1, $2, $3, $4) RETURNING id',
-    [productId, quantity, amount, 'PENDING']
-  );
-  const orderId = orderRes.rows[0].id;
-
   try {
-    // Step 2: Call Inventory Service to Reserve Stock
-    await axios.post('http://localhost:5002/reserve', { productId, quantity });
+    if (useInMemory) {
+      orderId = nextOrderId++;
+      inMemoryOrders.unshift({
+        id: orderId,
+        product_id: pId,
+        quantity: qty,
+        amount: amt,
+        status: 'PENDING',
+      });
+    } else {
+      const orderRes = await db.query(
+        'INSERT INTO orders (product_id, quantity, amount, status) VALUES ($1, $2, $3, $4) RETURNING id',
+        [pId, qty, amt, 'PENDING']
+      );
+      orderId = orderRes.rows[0].id;
+    }
+    steps.push({ label: `Order #${orderId} created in PENDING state`, state: 'done' });
+  } catch (dbErr) {
+    console.error('Failed to create pending order:', dbErr.message);
+    return res.status(500).json({
+      status: 'FAILED',
+      reason: `Database error: ${dbErr.message}`,
+      steps: [{ label: 'Order record creation failed', state: 'failed' }],
+    });
+  }
 
-    // Step 3: Call Payment Service to Process Payment
-    await axios.post('http://localhost:5003/pay', { orderId, amount });
+  // Saga Execution
+  try {
+    // Step 2: Reserve Stock in Inventory Service
+    console.log(`[SAGA] Step 1: Reserving stock (Order #${orderId}, Product ${pId}, Qty ${qty})...`);
+    await axios.post(`${INVENTORY_URL}/reserve`, { productId: pId, quantity: qty });
+    inventoryReserved = true;
+    steps.push({ label: 'Inventory reserved successfully', state: 'done' });
 
-    // Everything succeeded: Update Order to COMPLETED
-    await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['COMPLETED', orderId]);
-    return res.json({ status: 'SUCCESS', orderId, message: 'Order placed successfully!' });
+    // Step 3: Process Payment in Payment Service
+    console.log(`[SAGA] Step 2: Processing payment (Order #${orderId}, Amount ${amt})...`);
+    await axios.post(`${PAYMENT_URL}/pay`, { orderId, amount: amt });
+    steps.push({ label: 'Payment approved', state: 'done' });
 
-  } catch (error) {
-    // SAGA ROLLBACK TRIGGERED: Something failed along the chain
-    console.log(`[SAGA TRIGGERED] Order ${orderId} failed: ${error.message}. Rolling back...`);
+    // Step 4: Commit Inventory (optional deduction)
+    await axios.post(`${INVENTORY_URL}/commit`, { productId: pId, quantity: qty }).catch(() => {});
 
-    // Compensating Action: Release reserved stock
-    await axios.post('http://localhost:5002/release', { productId, quantity }).catch(e => {
-      console.error('Failed to trigger inventory compensation:', e.message);
+    // Step 5: Mark Order as COMPLETED
+    if (useInMemory) {
+      const ord = inMemoryOrders.find(o => o.id === orderId);
+      if (ord) ord.status = 'COMPLETED';
+    } else {
+      await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['COMPLETED', orderId]);
+    }
+    steps.push({ label: 'Order marked COMPLETED', state: 'done' });
+
+    console.log(`[SAGA COMPLETE] Order #${orderId} completed successfully.`);
+    return res.json({
+      status: 'SUCCESS',
+      orderId,
+      message: 'Order placed successfully!',
+      steps,
     });
 
+  } catch (error) {
+    // SAGA ROLLBACK TRIGGERED
+    const reason = error.response?.data?.error || error.message;
+    console.log(`[SAGA TRIGGERED] Order #${orderId} failed: "${reason}". Initiating rollback...`);
+
+    // Compensating Action: Release reserved stock ONLY IF stock was actually reserved
+    if (inventoryReserved) {
+      steps.push({ label: reason.startsWith('Payment declined') ? reason : `Payment declined: ${reason}`, state: 'failed' });
+      console.log(`[SAGA COMPENSATION] Releasing reserved inventory for Product ${pId}...`);
+      await axios.post(`${INVENTORY_URL}/release`, { productId: pId, quantity: qty }).catch(e => {
+        console.error('Failed to trigger inventory compensation:', e.message);
+      });
+      steps.push({ label: 'Compensating action: Inventory reservation released', state: 'compensated' });
+    } else {
+      steps.push({ label: reason.startsWith('Inventory reservation') ? reason : `Inventory reservation failed: ${reason}`, state: 'failed' });
+    }
+
     // Mark Order as CANCELLED
-    await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['CANCELLED', orderId]);
+    if (useInMemory) {
+      const ord = inMemoryOrders.find(o => o.id === orderId);
+      if (ord) ord.status = 'CANCELLED';
+    } else {
+      await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['CANCELLED', orderId]);
+    }
+    steps.push({ label: 'Order marked CANCELLED', state: 'compensated' });
 
     return res.status(400).json({
       status: 'FAILED',
       orderId,
-      reason: error.response?.data?.error || error.message,
-      message: 'Transaction rolled back automatically via Saga compensation.'
+      reason,
+      message: 'Transaction rolled back automatically via Saga compensation.',
+      steps,
     });
   }
 });
 
-app.listen(5001, () => console.log('Order Service running on port 5001'));
+app.listen(PORT, async () => {
+  console.log(`🛒 Order Service running on port ${PORT}`);
+  await initDB();
+});

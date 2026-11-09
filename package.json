@@ -1,26 +1,16 @@
 {
-  "name": "resilix",
+  "name": "resilix-saga-system",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Resilix Distributed Saga Pattern with Inventory, Payment, and Order Microservices + React Storefront",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start:inventory": "node inventory-service/index.js",
+    "start:payment": "node payment-service/index.js",
+    "start:order": "node order-service/index.js",
+    "start:client": "npm --prefix client run dev",
+    "test:check": "node test-saga.js",
+    "seed": "node seed.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Shreyay05/Resilix.git"
-  },
-  "keywords": [],
+  "keywords": ["saga", "microservices", "distributed-systems", "concurrency-control", "postgres"],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/Shreyay05/Resilix/issues"
-  },
-  "homepage": "https://github.com/Shreyay05/Resilix#readme",
-  "dependencies": {
-    "axios": "^1.20.0",
-    "express": "^5.2.1",
-    "pg": "^8.23.0"
-  }
+  "license": "ISC"
 }
