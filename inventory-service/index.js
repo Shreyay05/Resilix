@@ -37,6 +37,7 @@ const defaultProducts = [
   { id: 10, name: 'PlayStation 5 DualSense Edge Controller', stock: 20, reserved_stock: 0 },
   { id: 11, name: 'Meta Quest 3 VR Headset', stock: 16, reserved_stock: 0 },
   { id: 12, name: 'Sonos Era 100 Smart Speaker', stock: 18, reserved_stock: 0 },
+  { id: 13, name: 'Apple Mac Studio M2 Ultra Bundle', stock: 5, reserved_stock: 0 },
 ];
 
 let useInMemory = false;
@@ -115,6 +116,36 @@ app.get('/products/:id', async (req, res) => {
     const result = await db.query('SELECT * FROM products WHERE id = $1', [id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /products/:id/adjust - Admin endpoint to replenish/adjust stock
+app.post('/products/:id/adjust', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const adjustment = parseInt(req.body.adjustment || 0, 10);
+
+  if (isNaN(id) || isNaN(adjustment)) {
+    return res.status(400).json({ error: 'Invalid id or adjustment amount' });
+  }
+
+  if (useInMemory) {
+    const product = inMemoryProducts.find(p => p.id === id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    product.stock = Math.max(0, product.stock + adjustment);
+    console.log(`\x1b[35m[ADMIN]\x1b[0m Stock for Product #${id} adjusted by ${adjustment}. New stock: ${product.stock}`);
+    return res.json({ message: 'Stock updated successfully', product });
+  }
+
+  try {
+    const result = await db.query(
+      'UPDATE products SET stock = GREATEST(0, stock + $1) WHERE id = $2 RETURNING *',
+      [adjustment, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    console.log(`\x1b[35m[ADMIN]\x1b[0m Stock for Product #${id} adjusted by ${adjustment}. New stock: ${result.rows[0].stock}`);
+    res.json({ message: 'Stock updated successfully', product: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

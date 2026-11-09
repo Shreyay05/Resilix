@@ -108,10 +108,11 @@ app.get('/orders/:id', async (req, res) => {
 
 // POST /orders - Saga Orchestration Entry Point
 app.post('/orders', async (req, res) => {
-  const { productId, quantity, amount } = req.body;
+  const { productId, quantity, amount, customer } = req.body;
   const pId = parseInt(productId, 10);
   const qty = parseInt(quantity, 10);
   const amt = parseFloat(amount);
+  const customerName = customer || 'Customer';
 
   if (isNaN(pId) || isNaN(qty) || isNaN(amt) || qty <= 0) {
     return res.status(400).json({
@@ -135,6 +136,8 @@ app.post('/orders', async (req, res) => {
         quantity: qty,
         amount: amt,
         status: 'PENDING',
+        customer: customerName,
+        created_at: new Date().toLocaleString(),
       });
     } else {
       const orderRes = await db.query(
@@ -176,7 +179,10 @@ app.post('/orders', async (req, res) => {
     // Step 5: Mark Order as COMPLETED
     if (useInMemory) {
       const ord = inMemoryOrders.find(o => o.id === orderId);
-      if (ord) ord.status = 'COMPLETED';
+      if (ord) {
+        ord.status = 'COMPLETED';
+        ord.steps = steps;
+      }
     } else {
       await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['COMPLETED', orderId]);
     }
@@ -211,7 +217,11 @@ app.post('/orders', async (req, res) => {
     // Mark Order as CANCELLED
     if (useInMemory) {
       const ord = inMemoryOrders.find(o => o.id === orderId);
-      if (ord) ord.status = 'CANCELLED';
+      if (ord) {
+        ord.status = 'CANCELLED';
+        ord.steps = steps;
+        ord.reason = reason;
+      }
     } else {
       await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['CANCELLED', orderId]);
     }

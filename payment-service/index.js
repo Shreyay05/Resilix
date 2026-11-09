@@ -106,16 +106,17 @@ app.post('/pay', async (req, res) => {
   }
 
   // SIMULATION RULE FOR EVALUATION DEMO:
-  // Payments for amounts > 1000 fail deliberately to trigger Saga Compensation Rollback
-  const isDeclined = amt > 1000;
+  // Payments for amounts > 10,000 fail deliberately to trigger Saga Compensation Rollback
+  const PAYMENT_THRESHOLD = parseFloat(process.env.PAYMENT_THRESHOLD || '10000');
+  const isDeclined = amt > PAYMENT_THRESHOLD;
   const status = isDeclined ? 'FAILED' : 'SUCCESS';
 
   if (useInMemory) {
     const record = { id: inMemoryPayments.length + 1, order_id: oId, amount: amt, status };
     inMemoryPayments.push(record);
     if (isDeclined) {
-      console.log(`\x1b[31m[FAIL] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} DECLINED (exceeds ₹1,000 threshold -> triggers Saga compensation rollback)`);
-      return res.status(400).json({ error: 'Payment declined: Amount exceeds limit (Threshold: 1000)' });
+      console.log(`\x1b[31m[FAIL] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} DECLINED (exceeds ₹10,000 threshold -> triggers Saga compensation rollback)`);
+      return res.status(400).json({ error: 'Payment declined: Amount exceeds limit (Threshold: 10,000)' });
     }
     console.log(`\x1b[32m[PASS] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} APPROVED`);
     return res.json({ message: 'Payment successful', status: 'SUCCESS' });
@@ -128,8 +129,8 @@ app.post('/pay', async (req, res) => {
     );
 
     if (isDeclined) {
-      console.log(`\x1b[31m[FAIL] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} DECLINED (exceeds ₹1,000 threshold -> triggers Saga compensation rollback)`);
-      return res.status(400).json({ error: 'Payment declined: Amount exceeds limit (Threshold: 1000)' });
+      console.log(`\x1b[31m[FAIL] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} DECLINED (exceeds ₹10,000 threshold -> triggers Saga compensation rollback)`);
+      return res.status(400).json({ error: 'Payment declined: Amount exceeds limit (Threshold: 10,000)' });
     }
 
     console.log(`\x1b[32m[PASS] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} APPROVED`);
