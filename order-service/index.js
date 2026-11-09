@@ -141,15 +141,19 @@ app.post('/orders', async (req, res) => {
 
   // Saga Execution
   try {
+    console.log(`\x1b[36m[SAGA START] [ORDER]\x1b[0m Starting Saga for Order #${orderId} (Product: #${pId}, Qty: ${qty}, Amount: ₹${amt})`);
+
     // Step 2: Reserve Stock in Inventory Service
-    console.log(`[SAGA] Step 1: Reserving stock (Order #${orderId}, Product ${pId}, Qty ${qty})...`);
+    console.log(`   --> [STEP 1/2] Calling Inventory Service POST /reserve...`);
     await axios.post(`${INVENTORY_URL}/reserve`, { productId: pId, quantity: qty });
     inventoryReserved = true;
+    console.log(`   \x1b[32m[PASS] [STEP 1/2]\x1b[0m Stock reserved in Inventory Service`);
     steps.push({ label: 'Inventory reserved successfully', state: 'done' });
 
     // Step 3: Process Payment in Payment Service
-    console.log(`[SAGA] Step 2: Processing payment (Order #${orderId}, Amount ${amt})...`);
+    console.log(`   --> [STEP 2/2] Calling Payment Service POST /pay...`);
     await axios.post(`${PAYMENT_URL}/pay`, { orderId, amount: amt });
+    console.log(`   \x1b[32m[PASS] [STEP 2/2]\x1b[0m Payment approved in Payment Service`);
     steps.push({ label: 'Payment approved', state: 'done' });
 
     // Step 4: Commit Inventory (optional deduction)
@@ -164,7 +168,7 @@ app.post('/orders', async (req, res) => {
     }
     steps.push({ label: 'Order marked COMPLETED', state: 'done' });
 
-    console.log(`[SAGA COMPLETE] Order #${orderId} completed successfully.`);
+    console.log(`\x1b[32m[SAGA COMPLETE - PASS]\x1b[0m Order #${orderId} successfully completed! All steps succeeded.\n`);
     return res.json({
       status: 'SUCCESS',
       orderId,
@@ -175,15 +179,16 @@ app.post('/orders', async (req, res) => {
   } catch (error) {
     // SAGA ROLLBACK TRIGGERED
     const reason = error.response?.data?.error || error.message;
-    console.log(`[SAGA TRIGGERED] Order #${orderId} failed: "${reason}". Initiating rollback...`);
+    console.log(`\x1b[31m[SAGA ABORTED - FAIL]\x1b[0m Order #${orderId} failed: "${reason}"`);
 
     // Compensating Action: Release reserved stock ONLY IF stock was actually reserved
     if (inventoryReserved) {
       steps.push({ label: reason.startsWith('Payment declined') ? reason : `Payment declined: ${reason}`, state: 'failed' });
-      console.log(`[SAGA COMPENSATION] Releasing reserved inventory for Product ${pId}...`);
+      console.log(`\x1b[33m[COMPENSATING ACTION]\x1b[0m Releasing reserved inventory for Product #${pId} (Qty ${qty})...`);
       await axios.post(`${INVENTORY_URL}/release`, { productId: pId, quantity: qty }).catch(e => {
         console.error('Failed to trigger inventory compensation:', e.message);
       });
+      console.log(`   \x1b[32m[PASS] [ROLLBACK]\x1b[0m Inventory released successfully`);
       steps.push({ label: 'Compensating action: Inventory reservation released', state: 'compensated' });
     } else {
       steps.push({ label: reason.startsWith('Inventory reservation') ? reason : `Inventory reservation failed: ${reason}`, state: 'failed' });
@@ -197,6 +202,7 @@ app.post('/orders', async (req, res) => {
       await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['CANCELLED', orderId]);
     }
     steps.push({ label: 'Order marked CANCELLED', state: 'compensated' });
+    console.log(`\x1b[33m[SAGA ROLLBACK COMPLETE]\x1b[0m Order #${orderId} marked CANCELLED cleanly.\n`);
 
     return res.status(400).json({
       status: 'FAILED',

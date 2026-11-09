@@ -100,8 +100,10 @@ app.post('/pay', async (req, res) => {
     const record = { id: inMemoryPayments.length + 1, order_id: oId, amount: amt, status };
     inMemoryPayments.push(record);
     if (isDeclined) {
+      console.log(`\x1b[31m[FAIL] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} DECLINED (exceeds ₹1,000 threshold -> triggers Saga compensation rollback)`);
       return res.status(400).json({ error: 'Payment declined: Amount exceeds limit (Threshold: 1000)' });
     }
+    console.log(`\x1b[32m[PASS] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} APPROVED`);
     return res.json({ message: 'Payment successful', status: 'SUCCESS' });
   }
 
@@ -112,11 +114,14 @@ app.post('/pay', async (req, res) => {
     );
 
     if (isDeclined) {
+      console.log(`\x1b[31m[FAIL] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} DECLINED (exceeds ₹1,000 threshold -> triggers Saga compensation rollback)`);
       return res.status(400).json({ error: 'Payment declined: Amount exceeds limit (Threshold: 1000)' });
     }
 
+    console.log(`\x1b[32m[PASS] [PAYMENT]\x1b[0m Order #${oId}: ₹${amt} APPROVED`);
     res.json({ message: 'Payment successful', status: 'SUCCESS' });
   } catch (err) {
+    console.log(`\x1b[31m[FAIL] [PAYMENT]\x1b[0m Order #${oId}: DB error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });

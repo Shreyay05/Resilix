@@ -122,9 +122,11 @@ app.post('/reserve', async (req, res) => {
     }
     const availableStock = product.stock - product.reserved_stock;
     if (availableStock < qty) {
+      console.log(`\x1b[31m[FAIL] [INVENTORY]\x1b[0m Insufficient stock for Product #${pId} (requested: ${qty}, available: ${availableStock})`);
       return res.status(400).json({ error: 'Insufficient stock available' });
     }
     product.reserved_stock += qty;
+    console.log(`\x1b[32m[PASS] [INVENTORY]\x1b[0m Reserved ${qty} unit(s) of Product #${pId} (${product.name}). Remaining available: ${product.stock - product.reserved_stock}`);
     return res.json({ message: 'Stock reserved successfully', reserved: qty, available: product.stock - product.reserved_stock });
   }
 
@@ -135,20 +137,22 @@ app.post('/reserve', async (req, res) => {
 
     // Row-level lock to prevent concurrent race conditions
     const productRes = await client.query(
-      'SELECT stock, reserved_stock FROM products WHERE id = $1 FOR UPDATE',
+      'SELECT stock, reserved_stock, name FROM products WHERE id = $1 FOR UPDATE',
       [pId]
     );
 
     if (productRes.rows.length === 0) {
       await client.query('ROLLBACK');
+      console.log(`\x1b[31m[FAIL] [INVENTORY]\x1b[0m Product #${pId} not found`);
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    const { stock, reserved_stock } = productRes.rows[0];
+    const { stock, reserved_stock, name } = productRes.rows[0];
     const availableStock = stock - reserved_stock;
 
     if (availableStock < qty) {
       await client.query('ROLLBACK');
+      console.log(`\x1b[31m[FAIL] [INVENTORY]\x1b[0m Insufficient stock for Product #${pId} (${name}) (requested: ${qty}, available: ${availableStock})`);
       return res.status(400).json({ error: 'Insufficient stock available' });
     }
 
@@ -158,9 +162,11 @@ app.post('/reserve', async (req, res) => {
     );
 
     await client.query('COMMIT');
+    console.log(`\x1b[32m[PASS] [INVENTORY]\x1b[0m Reserved ${qty} unit(s) of Product #${pId} (${name}). Remaining available: ${availableStock - qty}`);
     res.json({ message: 'Stock reserved successfully', reserved: qty, available: availableStock - qty });
   } catch (err) {
     if (client) await client.query('ROLLBACK').catch(() => {});
+    console.log(`\x1b[31m[FAIL] [INVENTORY]\x1b[0m Error reserving stock: ${err.message}`);
     res.status(500).json({ error: err.message });
   } finally {
     if (client) client.release();
@@ -178,6 +184,7 @@ app.post('/release', async (req, res) => {
     if (product) {
       product.reserved_stock = Math.max(0, product.reserved_stock - (qty || 0));
     }
+    console.log(`\x1b[33m[COMPENSATING ROLLBACK] [INVENTORY]\x1b[0m Released ${qty} reserved unit(s) of Product #${pId} back to available stock`);
     return res.json({ message: 'Reserved stock released back' });
   }
 
@@ -186,8 +193,10 @@ app.post('/release', async (req, res) => {
       'UPDATE products SET reserved_stock = GREATEST(0, reserved_stock - $1) WHERE id = $2',
       [qty, pId]
     );
+    console.log(`\x1b[33m[COMPENSATING ROLLBACK] [INVENTORY]\x1b[0m Released ${qty} reserved unit(s) of Product #${pId} back to available stock`);
     res.json({ message: 'Reserved stock released back' });
   } catch (err) {
+    console.log(`\x1b[31m[FAIL] [INVENTORY]\x1b[0m Error releasing stock: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });
@@ -204,6 +213,7 @@ app.post('/commit', async (req, res) => {
       product.stock = Math.max(0, product.stock - (qty || 0));
       product.reserved_stock = Math.max(0, product.reserved_stock - (qty || 0));
     }
+    console.log(`\x1b[32m[COMMITTED] [INVENTORY]\x1b[0m Finalized order deduction for Product #${pId} (${qty} units)`);
     return res.json({ message: 'Reserved stock committed' });
   }
 
@@ -212,6 +222,7 @@ app.post('/commit', async (req, res) => {
       'UPDATE products SET stock = GREATEST(0, stock - $1), reserved_stock = GREATEST(0, reserved_stock - $1) WHERE id = $2',
       [qty, pId]
     );
+    console.log(`\x1b[32m[COMMITTED] [INVENTORY]\x1b[0m Finalized order deduction for Product #${pId} (${qty} units)`);
     res.json({ message: 'Reserved stock committed' });
   } catch (err) {
     res.status(500).json({ error: err.message });
